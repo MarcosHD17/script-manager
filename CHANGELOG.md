@@ -1,5 +1,11 @@
 # Registro de cambios
 
+## 0.5.0
+- feat: exportar todos los scripts o solo el seleccionado a JSON (`script-manager-AAAA-MM-DD.json`).
+- feat: importar uno o varios archivos JSON; con ids repetidos se elige reemplazar o importar como copia. Se acepta también una lista simple de scripts.
+- security: los scripts importados quedan desactivados hasta que el usuario los revise y active.
+- refactor: nueva lógica pura en `transfer.js` (validación, normalización y fusión).
+
 ## 0.4.1
 - fix: scripts que reutilizan el mismo id y limpian su botón anterior con `getElementById(...).remove()` se borraban entre sí antes de poder agruparse; ahora cada script solo ve los componentes creados por él (aislamiento en `getElementById`, solo en el mundo del script de usuario).
 

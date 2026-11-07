@@ -27,3 +27,4 @@ button.danger { color: #d93025; }
 .bar { padding: 6px 10px; border-bottom: 1px solid #dadce0; } .bar button { width: 100%; }
 .alert { background: #fce8e6; border: 1px solid #d93025; color: #a50e0e; padding: 8px; margin: 8px; border-radius: 6px; } .alert button { margin-top: 6px; }
 .opt { display: block; margin-top: 6px; font-size: 12px; }
+.sidebar .tools { gap: 6px; cursor: default; flex-wrap: wrap; } #message { margin: 0 0 8px; }

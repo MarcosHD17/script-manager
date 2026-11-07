@@ -6,7 +6,8 @@ Extensión Manifest V3 que inyecta múltiples scripts por página, activables de
 - `background.js`: al completar la carga de una pestaña ejecuta los scripts activos cuyo patrón coincida (`tabs.onUpdated` + `userScripts.execute`, mundo `USER_SCRIPT`); atiende ejecución manual (`run` / `runAll`) y guarda el estado de cada ejecución.
 - `storage.js`: acceso compartido a `chrome.storage.local` (`scripts`, `runStatus`).
 - `popup.*`: interruptor por script (varios activos a la vez), botón ▶ por script y "Ejecutar todos los activos".
-- `options.*`: CRUD de scripts (nombre, patrones de URL, código, estado).
+- `options.*`: CRUD de scripts (nombre, patrones de URL, código, estado), importar y exportar.
+- `transfer.js`: validación y fusión de archivos importados.
 
 ## Instalación
 1. `chrome://extensions` > activar modo desarrollador > "Cargar descomprimida".
@@ -14,6 +15,11 @@ Extensión Manifest V3 que inyecta múltiples scripts por página, activables de
 
 ## Modelo de datos
 `{ id, name, matches: string[], code, enabled }`. Los patrones siguen el formato de match patterns de Chrome.
+
+## Importar / exportar
+En la página de opciones: "Exportar todos", "Exportar este" e "Importar" (JSON). Formato:
+`{ "format": "script-manager", "formatVersion": 1, "scripts": [{ id, name, matches, code, enabled }] }`.
+Los scripts importados quedan desactivados; con ids repetidos se elige reemplazar o crear copia.
 
 ## API para componentes flotantes
 ```js
