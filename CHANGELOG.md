@@ -1,5 +1,11 @@
 # Registro de cambios
 
+## 0.17.0
+- fix: los patrones de URL específicos (ej. `https://claude.ai/*`, `https://example.com/path/*`) no ejecutaban los scripts en las páginas correspondientes — solo funcionaba `<all_urls>`. El motor de evaluación en `src/core/match.js` usaba un regex estricto: `/path/*` no coincidía con `/path` (sin slash final) ni con `/path?q=1`. Ahora `buildPathRegex` trata `/path/*` de forma tolerante: coincide con `/path`, `/path/`, `/path/sub`, `/path?query=1` y cualquier ruta descendiente.
+- fix: añadida tolerancia www en la comparación de host: `example.com` ahora coincide con `www.example.com` y viceversa, sin necesidad de escribir el wildcard explícito.
+- fix: `*.example.com` ahora también coincide con el dominio raíz `example.com` (sin subdominio), comportamiento esperado por la mayoría de userscripts.
+- fix: al importar un archivo JSON exportado, el estado `enabled` del script se preserva exactamente. Se reemplazó `item.enabled !== false` (que falla si el campo es `undefined` en archivos exportados antes de v0.14) por `typeof item.enabled === 'boolean' ? item.enabled : true`, asegurando que solo `false` explícito desactiva el script y los archivos sin campo quedan activos por defecto.
+
 ## 0.16.0
 - fix: `GM_notification` no existía; un script que la usaba fallaba a mitad de ejecución ("corre pero no hace nada", sin notificaciones flotantes). Ahora se muestran avisos propios (esquina inferior derecha, ignorados por el dock).
 - feat: nuevas APIs `GM_setClipboard`, `GM_registerMenuCommand`, `GM_unregisterMenuCommand`, `GM_addElement`, `GM_getResourceText/URL` (stub), objeto `GM.*` (promesas) y `unsafeWindow`.

@@ -95,7 +95,9 @@ export function parseImport(text, fileName = '') {
       matches: matches.length || rawMatches.length ? matches : ['<all_urls>'], // sin patrones en el archivo = global; todos inválidos = no se ejecuta
       grants,
       code: item.code,
-      enabled: item.enabled !== false,
+      // v0.17.0: forma explícita — si el archivo exportado tenía enabled=false lo preserva;
+      //          si no tiene el campo (versiones antiguas) queda activo por defecto.
+      enabled: typeof item.enabled === 'boolean' ? item.enabled : true,
       ...(typeof item.groupName === 'string' && item.groupName.trim()
         ? { groupName: item.groupName.trim(), ...(/^#[0-9a-f]{6}$/i.test(item.groupColor ?? '') ? { groupColor: item.groupColor } : {}) }
         : {})
