@@ -8,6 +8,9 @@ Extensión Manifest V3 que inyecta múltiples scripts por página, activables de
 - `popup.*`: interruptor por script (varios activos a la vez), botón ▶ por script y "Ejecutar todos los activos".
 - `options.*`: CRUD de scripts (nombre, patrones de URL, código, estado), importar y exportar.
 - `transfer.js`: validación y fusión de archivos importados.
+- `organize.js`: orden, grupos, movimientos y duplicado (lógica pura).
+- `versions.js`: historial de versiones y diff (lógica pura).
+- `theme.js`: temas de las ventanas.
 - `metadata.js`: lectura de cabeceras ==UserScript==.
 - `gm-client.js` / `gm-host.js`: API GM_* (lado script y lado background).
 
@@ -17,6 +20,13 @@ Extensión Manifest V3 que inyecta múltiples scripts por página, activables de
 
 ## Modelo de datos
 `{ id, name, matches: string[], code, enabled }`. Los patrones siguen el formato de match patterns de Chrome.
+
+## Organización, versiones y temas
+- **Grupos:** "+ Grupo" en opciones. Arrastra scripts a un grupo o elígelo en el editor. La casilla del grupo activa/desactiva todos sus scripts.
+- **Orden:** selector "Ordenar". En modo Manual se usan las flechas ▲▼ o arrastrar y soltar; en los demás modos el orden es automático dentro de cada grupo.
+- **Versiones:** cada guardado con cambios crea una versión (máx. 30 por script, con nota opcional). En "Historial de versiones": Comparar con el editor, Restaurar (crea una versión nueva) y borrar.
+- **Duplicar / Copiar:** "Duplicar" crea una copia desactivada del script guardado; "Copiar" deja en el portapapeles un userscript con cabecera que se puede pegar en un script nuevo.
+- **Tema:** selector "Tema" (Automático, Claro, Oscuro, Medianoche, Bosque, Sepia); se aplica a opciones y popup.
 
 ## API de extensión (GM_*)
 Los scripts pueden usar funciones con privilegios de extensión si se les concede en "Permisos de extensión (@grant)" (o con `*`):

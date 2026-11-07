@@ -4,12 +4,15 @@ import { parseMetadata } from './metadata.js';
 export const EXPORT_FORMAT = 'script-manager';
 export const EXPORT_FORMAT_VERSION = 1;
 
-export function buildExport(scripts) {
+export function buildExport(scripts, groups = []) {
   return {
     format: EXPORT_FORMAT,
     formatVersion: EXPORT_FORMAT_VERSION,
     exportedAt: new Date().toISOString(),
-    scripts: scripts.map(({ id, name, matches, grants, code, enabled }) => ({ id, name, matches, grants: grants ?? [], code, enabled }))
+    scripts: scripts.map(({ id, name, matches, grants, code, enabled, group }) => ({
+      id, name, matches, grants: grants ?? [], code, enabled,
+      ...(groups.find((g) => g.id === group) ? { groupName: groups.find((g) => g.id === group).name } : {})
+    }))
   };
 }
 
@@ -63,7 +66,8 @@ export function parseImport(text, fileName = '') {
       matches: matches.length ? matches.map((m) => m.trim()) : ['<all_urls>'],
       grants,
       code: item.code,
-      enabled: false
+      enabled: false,
+      ...(typeof item.groupName === 'string' && item.groupName.trim() ? { groupName: item.groupName.trim() } : {})
     });
   }
   return { scripts, skipped, invalid: [], repaired: [] };

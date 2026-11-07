@@ -4,8 +4,16 @@
 <body>
   <div class="layout">
     <aside class="sidebar">
-      <div class="item"><strong>Scripts</strong><button id="newScript" class="primary">+ Nuevo</button></div>
-      <div class="item tools">
+      <div class="side-head">
+        <strong>Scripts</strong>
+        <span>
+          <button id="newScript" class="primary">+ Nuevo</button>
+          <button id="newGroup">+ Grupo</button>
+        </span>
+      </div>
+      <div class="side-tools">
+        <label>Ordenar <select id="sortMode"></select></label>
+        <label>Tema <select id="themeSelect"></select></label>
         <button id="exportAll">⬇ Exportar todos</button>
         <button id="importBtn">⬆ Importar</button>
         <input id="importFile" type="file" accept=".json,.js,application/json" multiple hidden>
@@ -15,19 +23,32 @@
     <main class="editor">
       <div id="warning" class="warn" hidden></div>
       <div id="message" hidden></div>
-      <label>Nombre<input id="name" type="text"></label>
+      <div class="row two">
+        <label>Nombre<input id="name" type="text"></label>
+        <label>Grupo<select id="group"></select></label>
+      </div>
       <label>Patrones de URL (uno por línea, ej. https://*.example.com/*)<textarea id="matches" rows="3"></textarea></label>
       <label>Permisos de extensión (@grant, separados por comas; <code>*</code> = todos)
         <input id="grants" type="text" placeholder="GM_openInTab, GM_xmlhttpRequest, GM_setValue, GM_getValue">
       </label>
-      <label>Código <small>(API: <code>ScriptManager.mount(elemento, { title, id })</code> agrupa componentes flotantes)</small><textarea id="code" class="code" spellcheck="false"></textarea></label>
-      <label><input id="enabled" type="checkbox"> Activo</label>
+      <label>Código <small>(API: <code>ScriptManager.mount(elemento, { title, id })</code> agrupa componentes flotantes)</small>
+        <textarea id="code" class="code" spellcheck="false"></textarea>
+      </label>
+      <label>Nota de versión (opcional) <input id="note" type="text" placeholder="Qué cambió en esta versión"></label>
+      <label class="inline"><input id="enabled" type="checkbox"> Activo</label>
       <div class="row">
         <button id="save" class="primary">Guardar</button>
         <button id="readHeader">Leer cabecera ==UserScript==</button>
+        <button id="duplicate">Duplicar</button>
+        <button id="copyScript">Copiar</button>
         <button id="exportOne">Exportar este</button>
         <button id="remove" class="danger">Eliminar</button>
       </div>
+      <details id="historyBox">
+        <summary>Historial de versiones (<span id="historyCount">0</span>)</summary>
+        <div id="historyList"></div>
+        <div id="diffView" class="diff" hidden></div>
+      </details>
     </main>
   </div>
   <script type="module" src="options.js"></script>

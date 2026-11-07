@@ -39,3 +39,14 @@ export function parseMetadata(code) {
   meta.grants = [...new Set(meta.grants)];
   return meta;
 }
+
+// Texto de userscript listo para copiar/pegar: cabecera regenerada desde los campos + código sin la cabecera anterior.
+export function buildUserScript(script) {
+  const body = script.code.replace(/^\s*\/\/\s*==UserScript==[\s\S]*?\/\/\s*==\/UserScript==\s*/, '');
+  const lines = ['// ==UserScript==', `// @name         ${script.name}`];
+  if (script.rev) lines.push(`// @version      ${script.rev}`);
+  for (const match of script.matches ?? []) lines.push(`// @match        ${match}`);
+  for (const grant of script.grants ?? []) lines.push(`// @grant        ${grant}`);
+  lines.push('// ==/UserScript==', '');
+  return lines.join('\n') + body;
+}

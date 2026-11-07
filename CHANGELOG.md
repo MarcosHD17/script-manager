@@ -1,5 +1,15 @@
 # Registro de cambios
 
+## 0.7.0
+- feat: grupos con nombre (crear, renombrar, eliminar, plegar, subir/bajar); casilla maestra para activar o desactivar todo un grupo, en opciones y popup.
+- feat: orden de la lista: manual (flechas y arrastrar y soltar, también entre grupos), nombre A→Z / Z→A, modificados o creados recientemente, activos primero y con permisos de extensión primero. El orden elegido se aplica también en el popup.
+- feat: control de versiones por script: cada guardado con cambios crea una versión (hasta 30) con nota opcional; comparar con el editor (diff línea a línea) y restaurar (se guarda como versión nueva); borrar versiones. Marca `vN` en la lista.
+- feat: duplicar script (copia desactivada, en el mismo grupo, con su propio historial) y copiar como userscript al portapapeles (se puede pegar de vuelta en un script nuevo).
+- feat: temas de las ventanas: Automático (sistema), Claro, Oscuro, Medianoche, Bosque y Sepia, en opciones y popup.
+- feat: la exportación incluye el nombre del grupo y la importación recrea los grupos.
+- refactor: nuevos módulos `organize.js`, `versions.js` y `theme.js`; `styles.css` basado en variables.
+- chore: migración automática al abrir opciones (versión inicial y fechas para los scripts existentes). Eliminar un script borra su historial.
+
 ## 0.6.1
 - feat: pegar un userscript completo en el editor aplica la cabecera (nombre, `@match`/`@include`, `@grant`) y, si el script es nuevo, lo guarda y lo deja activo sin más pasos.
 - fix: se corrige automáticamente el patrón con esquema duplicado `*://*://*` → `*://*/*` (antes se descartaba y el script no corría en el segundo sitio); se informa de cada corrección.
