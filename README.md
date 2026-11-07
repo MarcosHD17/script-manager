@@ -6,6 +6,7 @@ Extensión Manifest V3 que inyecta múltiples scripts por página, activables de
 - `background.js`: al completar la carga de una pestaña ejecuta los scripts activos cuyo patrón coincida (`tabs.onUpdated` + `userScripts.execute`, mundo `USER_SCRIPT`); atiende ejecución manual (`run` / `runAll`) y guarda el estado de cada ejecución.
 - `storage.js`: acceso compartido a `chrome.storage.local` (`scripts`, `runStatus`).
 - `popup.*`: interruptor por script (varios activos a la vez), botón ▶ y ✎ por script, "Ejecutar todos los activos", "+ Nuevo" (crear script), arrastre para ordenar/agrupar e indicador de coincidencia con la pestaña actual.
+- `io.js`: importar y exportar compartido entre popup y opciones.
 - `match.js`: evaluación de match patterns (compartida por background y popup).
 - `options.*`: CRUD de scripts (nombre, patrones de URL, código, estado), importar y exportar.
 - `transfer.js`: validación y fusión de archivos importados.
@@ -23,6 +24,8 @@ Extensión Manifest V3 que inyecta múltiples scripts por página, activables de
 `{ id, name, matches: string[], code, enabled }`. Los patrones siguen el formato de match patterns de Chrome.
 
 ## Organización, versiones y temas
+- **Grupos:** arrastra el asa ⠿ del grupo para moverlo (Gestionar y popup). 📌 fija un grupo arriba. "Contraer todo / Desplegar todo" actúa sobre todos los grupos y "Sin grupo", que también se puede plegar. En Gestionar el panel superior queda fijo y solo la lista se desplaza.
+- **Importar / exportar desde el popup:** botones "⬇ Exportar" y "⬆ Importar" (si el selector de archivos cierra el popup en tu Chrome, usa Gestionar).
 - **Desde el popup:** "+ Nuevo" crea un script (nombre, patrón —por defecto el origen de la pestaña— y código); ✎ lo abre en Gestionar; el asa ⠿ permite ordenarlo o moverlo a otro grupo (Esc cancela). Cada fila indica si el script se cargará automáticamente en la pestaña actual (activo **y** con patrón coincidente).
 - **Ordenar arrastrando:** toma una fila (asa ⠿ o cualquier parte que no sea un control) y suéltala donde quieras; la línea azul marca el lugar. Soltarla sobre la cabecera de un grupo la agrupa; sobre otra fila, la agrupa y la ordena. Esc cancela. Si arrastras uno de varios seleccionados, se mueve toda la selección. Los botones ▲▼ siguen disponibles en modo Manual.
 - **Grupos:** "+ Grupo" crea uno (si hay scripts seleccionados, los mueve a él). Cada grupo es una tarjeta con su color (cámbialo con el círculo de color), con los scripts anidados bajo una franja del mismo color. Se pueden plegar, renombrar, eliminar y subir o bajar. El interruptor del grupo activa o desactiva toda su sección.

@@ -1,11 +1,12 @@
 import {
   getScripts, setScripts, getRunStatus, getGroups, setGroups, getHistory, setHistory, getSettings, setSettings
 } from './storage.js';
-import { buildExport, parseImport, mergeScripts } from './transfer.js';
+import { buildExport } from './transfer.js';
+import { downloadJson, today, slug, exportAll, importFiles } from './io.js';
 import { parseMetadata, buildUserScript } from './metadata.js';
 import {
   SORT_MODES, buildSections, moveMany, shiftScript, moveGroup, setEnabled, enabledState, duplicateScript,
-  assignGroupsByName, bakeOrder, rangeIds, ensureGroupColors, nextGroupColor
+  assignGroupsByName, bakeOrder, rangeIds, ensureGroupColors, nextGroupColor, orderGroups, setAllCollapsed, togglePinned, moveGroupTo
 } from './organize.js';
 import { addVersion, ensureVersions, diffLines, collapseContext, comparableText } from './versions.js';
 import { THEMES, initTheme, applyTheme } from './theme.js';
@@ -17,7 +18,7 @@ const els = {
   theme: $('themeSelect'), historyList: $('historyList'), historyCount: $('historyCount'), diffView: $('diffView'),
   importFile: $('importFile'), search: $('search'), selectAll: $('selectAll'), selCount: $('selCount'),
   bulkBar: $('bulkBar'), bulkCount: $('bulkCount'), bulkGroup: $('bulkGroup'), bulkOn: $('bulkOn'), bulkOff: $('bulkOff'),
-  bulkClear: $('bulkClear'), bulkDelete: $('bulkDelete')
+  bulkClear: $('bulkClear'), bulkDelete: $('bulkDelete'), toggleAll: $('toggleAll')
 };
 let selectedId = null;
 
@@ -145,7 +146,7 @@ async function moveSelectionTo(groupId, label) {
   showMessage(`${ids.length} script(s) movido(s) a ${label}.`);
 }
 
-function groupHeader(section, groups) {
+function groupHeader(section, groups, collapsed) {
   const { group, scripts: shown } = section;
   const ids = shown.map((s) => s.id);
   const selectedCount = ids.filter((id) => selected.has(id)).length;
@@ -161,26 +162,40 @@ function groupHeader(section, groups) {
   master.input.indeterminate = enabledState(shown) === 'some';
 
   const toggle = async () => {
-    if (!group) return;
+    if (!group) {
+      const settings = await getSettings();
+      return setSettings({ ...settings, ungroupedCollapsed: !settings.ungroupedCollapsed });
+    }
     await setGroups((await getGroups()).map((g) => (g.id === group.id ? { ...g, collapsed: !g.collapsed } : g)));
   };
   const row = h('div', { class: 'group-row' }, pick);
   row.dataset.groupId = group?.id ?? '';
   if (group) {
+    const ggrip = h('span', { class: 'grip ggrip', textContent: '⠿', title: 'Arrastra para mover el grupo' });
+    ggrip.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      e.stopPropagation();
+      drag = { kind: 'group', id: group.id, name: group.name, startX: e.clientX, startY: e.clientY, active: false, drop: null, ids: [] };
+    });
+    row.prepend(ggrip);
     const color = h('input', { type: 'color', class: 'gcolor', value: group.color, title: 'Color del grupo' });
     color.addEventListener('click', (e) => e.stopPropagation());
     color.addEventListener('change', async () => {
       await setGroups((await getGroups()).map((g) => (g.id === group.id ? { ...g, color: color.value } : g)));
     });
-    row.append(h('button', { class: 'mini', textContent: group.collapsed ? '▸' : '▾', title: 'Plegar o desplegar', onclick: toggle }), color);
+    row.append(color);
   }
+  row.append(h('button', { class: 'mini', textContent: collapsed ? '▸' : '▾', title: 'Plegar o desplegar', onclick: toggle }));
   row.append(h('span', { class: 'gname', textContent: group ? `📁 ${group.name}` : 'Sin grupo', onclick: toggle }),
     h('span', { class: 'count', textContent: String(shown.length) }));
   if (group) {
-    const index = groups.findIndex((g) => g.id === group.id);
+    const ordered = orderGroups(groups);
+    const index = ordered.findIndex((g) => g.id === group.id);
+    const canMove = (step) => !!ordered[index + step] && !ordered[index + step].pinned === !group.pinned;
     row.append(
-      h('button', { class: 'mini', textContent: '▲', title: 'Subir grupo', disabled: index === 0, onclick: async () => setGroups(moveGroup(await getGroups(), group.id, -1)) }),
-      h('button', { class: 'mini', textContent: '▼', title: 'Bajar grupo', disabled: index === groups.length - 1, onclick: async () => setGroups(moveGroup(await getGroups(), group.id, 1)) }),
+      h('button', { class: 'mini pin' + (group.pinned ? ' on' : ''), textContent: '📌', title: group.pinned ? 'Quitar fijado' : 'Fijar el grupo arriba', onclick: async () => setGroups(togglePinned(await getGroups(), group.id)) }),
+      h('button', { class: 'mini', textContent: '▲', title: 'Subir grupo', disabled: !canMove(-1), onclick: async () => setGroups(moveGroup(await getGroups(), group.id, -1)) }),
+      h('button', { class: 'mini', textContent: '▼', title: 'Bajar grupo', disabled: !canMove(1), onclick: async () => setGroups(moveGroup(await getGroups(), group.id, 1)) }),
       h('button', { class: 'mini', textContent: '✎', title: 'Renombrar', onclick: () => renameGroup(group) }),
       h('button', { class: 'mini', textContent: '🗑', title: 'Eliminar grupo', onclick: () => deleteGroup(group) })
     );
@@ -248,6 +263,10 @@ async function renderList() {
   const manual = settings.sort === 'manual';
   const sections = buildSections(scripts, groups, settings.sort).map((s) => ({ ...s, scripts: s.scripts.filter(matches) }));
 
+  const collapsedOf = (section) => (section.group ? section.group.collapsed : settings.ungroupedCollapsed);
+  const anyOpen = groups.some((g) => !g.collapsed) || !settings.ungroupedCollapsed;
+  els.toggleAll.hidden = groups.length === 0;
+  els.toggleAll.textContent = anyOpen ? '⊟ Contraer todo' : '⊞ Desplegar todo';
   els.items.replaceChildren();
   visibleIds = [];
   for (const section of sections) {
@@ -255,17 +274,17 @@ async function renderList() {
     const container = groups.length ? h('div', { class: 'section' + (section.group ? '' : ' none') }) : els.items;
     if (groups.length) {
       if (section.group) container.style.setProperty('--gcolor', section.group.color);
-      container.append(groupHeader(section, groups));
+      container.append(groupHeader(section, groups, collapsedOf(section)));
       els.items.append(container);
     }
-    if (section.group?.collapsed) continue;
+    if (groups.length && collapsedOf(section)) continue;
     for (const script of section.scripts) {
       container.append(scriptRow(script, statuses, manual));
       visibleIds.push(script.id);
     }
   }
   if (!scripts.length) els.items.append(h('div', { class: 'empty', textContent: 'Sin scripts. Pega uno en el editor o impórtalo.' }));
-  else if (!visibleIds.length) els.items.append(h('div', { class: 'empty', textContent: 'Ningún script coincide con la búsqueda.' }));
+  else if (!visibleIds.length && query) els.items.append(h('div', { class: 'empty', textContent: 'Ningún script coincide con la búsqueda.' }));
 
   const existing = new Set(scripts.map((s) => s.id));
   for (const id of [...selected]) if (!existing.has(id)) selected.delete(id);
@@ -294,6 +313,12 @@ els.selectAll.addEventListener('change', () => {
   renderList();
 });
 els.search.addEventListener('input', renderList);
+els.toggleAll.addEventListener('click', async () => {
+  const [groups, settings] = await Promise.all([getGroups(), getSettings()]);
+  const collapse = groups.some((g) => !g.collapsed) || !settings.ungroupedCollapsed;
+  await setGroups(setAllCollapsed(groups, collapse));
+  await setSettings({ ...settings, ungroupedCollapsed: collapse });
+});
 els.bulkGroup.addEventListener('change', async () => {
   const value = els.bulkGroup.value;
   els.bulkGroup.value = '';
@@ -359,6 +384,12 @@ function endDragUI() {
 
 function startDrag() {
   drag.active = true;
+  if (drag.kind === 'group') {
+    els.items.querySelector(`.group-row[data-group-id="${CSS.escape(drag.id)}"]`)?.closest('.section')?.classList.add('dragging');
+    document.body.append(h('div', { class: 'drag-ghost', textContent: `📁 ${drag.name}` }));
+    document.body.classList.add('is-dragging');
+    return;
+  }
   drag.ids = selected.has(drag.id) && selected.size > 1 ? [...selected] : [drag.id];
   itemsOf(drag.ids).forEach((row) => row.classList.add('dragging'));
   document.body.append(h('div', { class: 'drag-ghost', textContent: drag.ids.length > 1 ? `${drag.ids.length} scripts` : drag.name }));
@@ -369,6 +400,16 @@ function updateDropTarget(e) {
   clearDropMarks();
   drag.drop = null;
   const hit = document.elementFromPoint?.(e.clientX, e.clientY);
+  if (drag.kind === 'group') {
+    const section = hit?.closest?.('.section');
+    const targetGroupId = section?.querySelector('.group-row')?.dataset.groupId;
+    if (!section || !targetGroupId || targetGroupId === drag.id) return;
+    const rect = section.getBoundingClientRect();
+    const after = e.clientY >= rect.top + rect.height / 2;
+    drag.drop = { targetGroupId, where: after ? 'after' : 'before' };
+    section.classList.add(after ? 'drop-after' : 'drop-before');
+    return;
+  }
   const target = hit?.closest?.('.item, .group-row');
   if (target?.classList.contains('item')) {
     if (drag.ids.includes(target.dataset.id)) return;
@@ -386,13 +427,16 @@ function updateDropTarget(e) {
 }
 
 function autoScroll(e) {
-  const sidebar = document.querySelector('.sidebar');
-  const rect = sidebar.getBoundingClientRect();
-  if (e.clientY < rect.top + 40) sidebar.scrollTop -= 14;
-  else if (e.clientY > rect.bottom - 40) sidebar.scrollTop += 14;
+  const rect = els.items.getBoundingClientRect();
+  if (e.clientY < rect.top + 40) els.items.scrollTop -= 14;
+  else if (e.clientY > rect.bottom - 40) els.items.scrollTop += 14;
 }
 
-async function commitDrop({ ids, drop }) {
+async function commitDrop({ ids, drop, kind, id }) {
+  if (kind === 'group') {
+    if (drop) await setGroups(moveGroupTo(await getGroups(), id, drop.targetGroupId, drop.where));
+    return;
+  }
   if (!drop || (drop.targetId && ids.includes(drop.targetId))) return;
   const [scripts, groups, settings] = await Promise.all([getScripts(), getGroups(), getSettings()]);
   let base = scripts;
@@ -567,23 +611,10 @@ els.code.addEventListener('paste', () => setTimeout(async () => {
 }, 0));
 
 // ---------- Importar / exportar ----------
-const today = () => new Date().toISOString().slice(0, 10);
-const slug = (text) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'script';
-
-function downloadJson(filename, data) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 $('exportAll').addEventListener('click', async () => {
   const [scripts, groups] = await Promise.all([getScripts(), getGroups()]);
   if (!scripts.length) return showMessage('No hay scripts para exportar.', 'alert');
-  downloadJson(`script-manager-${today()}.json`, buildExport(scripts, groups));
+  await exportAll();
   showMessage(`Exportados ${scripts.length} scripts.`);
 });
 
@@ -597,41 +628,10 @@ $('exportOne').addEventListener('click', async () => {
 
 $('importBtn').addEventListener('click', () => els.importFile.click());
 els.importFile.addEventListener('change', async () => {
-  const incoming = [];
-  let skipped = 0;
-  const errors = [];
-  const invalidPatterns = [];
-  const repairedPatterns = [];
-  for (const file of els.importFile.files) {
-    try {
-      const result = parseImport(await file.text(), file.name);
-      incoming.push(...result.scripts);
-      skipped += result.skipped;
-      invalidPatterns.push(...result.invalid);
-      repairedPatterns.push(...result.repaired);
-    } catch (error) {
-      errors.push(`${file.name}: ${error.message}`);
-    }
-  }
+  const result = await importFiles([...els.importFile.files]);
   els.importFile.value = '';
-  if (!incoming.length) return showMessage(errors.length ? errors.join(' | ') : 'No se encontraron scripts válidos.', 'alert');
-
-  const [existing, groups, history] = await Promise.all([getScripts(), getGroups(), getHistory()]);
-  const duplicates = incoming.filter((item) => existing.some((s) => s.id === item.id)).length;
-  const replace = duplicates > 0 && confirm(`${duplicates} script(s) ya existen con el mismo id.\nAceptar = reemplazarlos. Cancelar = importarlos como copia.`);
-  const merged = mergeScripts(existing, incoming, replace);
-  const grouped = assignGroupsByName(merged.scripts, groups);
-  const versioned = ensureVersions(grouped.scripts, history, Date.now(), 'Importado');
-  await setHistory(versioned.history);
-  await setGroups(grouped.groups);
-  await setScripts(versioned.scripts);
-  clearEditor();
-  const notes = [`Importados: ${merged.added} nuevos, ${merged.replaced} reemplazados, ${merged.copied} copias`];
-  if (skipped) notes.push(`${skipped} omitidos por formato inválido`);
-  if (repairedPatterns.length) notes.push(`Patrones corregidos: ${repairedPatterns.join('; ')}`);
-  if (invalidPatterns.length) notes.push(`Patrones @match inválidos omitidos: ${invalidPatterns.join(', ')}`);
-  if (errors.length) notes.push(errors.join(' | '));
-  showMessage(`${notes.join('. ')}. Quedan desactivados: revísalos y actívalos.`);
+  if (result.ok) clearEditor();
+  showMessage(result.message, result.ok ? 'ok' : 'alert');
 });
 
 // ---------- Orden y tema ----------

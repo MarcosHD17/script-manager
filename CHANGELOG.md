@@ -1,5 +1,14 @@
 # Registro de cambios
 
+## 0.11.0
+- feat: el popup incluye "Exportar" e "Importar" (misma lógica que Gestionar, ahora compartida en `io.js`). Si tu Chrome cierra el popup al abrir el selector de archivos, usa Importar en Gestionar.
+- feat: los grupos se pueden mover arrastrando su asa ⠿ (Gestionar y popup); en Gestionar siguen los botones ▲▼.
+- feat: grupos fijables (📌): los fijados se muestran siempre arriba; ▲▼ y el arrastre respetan ese bloque (soltar sobre un grupo adopta su estado de fijado).
+- feat: "Sin grupo" se puede contraer y desplegar (ajuste `ungroupedCollapsed`).
+- feat: botón "Contraer todo / Desplegar todo" para los grupos y "Sin grupo" (Gestionar y popup).
+- feat: en Gestionar, el encabezado, búsqueda, orden, tema, exportar/importar y "Seleccionar todos" quedan fijos; solo la lista se desplaza.
+- fix: con todo contraído ya no aparece "Ningún script coincide con la búsqueda".
+
 ## 0.10.0
 - feat: el popup permite crear scripts nuevos ("+ Nuevo": nombre, patrón y código) y abrir cualquiera en Gestionar (✎, enlace `#edit=<id>`).
 - feat: el popup permite ordenar y mover scripts entre grupos arrastrando el asa ⠿ (mismo comportamiento que Gestionar; con orden automático pasa a Manual conservando lo visible).

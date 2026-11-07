@@ -7,6 +7,13 @@
   <div class="bar"><button id="runAll" class="primary">▶ Ejecutar todos los activos</button>
     <label class="opt"><input id="dock" type="checkbox"> Agrupar flotantes en una lista (si hay 2 o más)</label>
     <label class="opt"><input id="auto" type="checkbox"> Detectar flotantes automáticamente</label></div>
+  <div class="tools">
+    <button id="exportAll" title="Exportar todos los scripts a un archivo JSON">⬇ Exportar</button>
+    <button id="importBtn" title="Importar scripts desde JSON o .js">⬆ Importar</button>
+    <button id="toggleAll" title="Contraer o desplegar todos los grupos">⊟ Contraer todo</button>
+    <input id="importFile" type="file" accept=".json,.js,application/json" multiple hidden>
+  </div>
+  <div id="msg" class="ok" hidden></div>
   <form id="newForm" class="newform" hidden>
     <input id="newName" type="text" placeholder="Nombre del script" required>
     <input id="newMatches" type="text" placeholder="Patrón de URL (ej. https://*.example.com/*)">

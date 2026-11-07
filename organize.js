@@ -26,10 +26,25 @@ export function sortScripts(list, mode) {
   return compare ? [...list].sort(compare) : [...list];
 }
 
+// Orden mostrado de los grupos: los fijados (pinned) primero; dentro de cada bloque, el orden del arreglo.
+export function orderGroups(groups) {
+  return [...groups.filter((g) => g.pinned), ...groups.filter((g) => !g.pinned)];
+}
+
+// Pliega o despliega todos los grupos.
+export function setAllCollapsed(groups, collapsed) {
+  return groups.map((g) => ({ ...g, collapsed }));
+}
+
+// Fija o desfija un grupo.
+export function togglePinned(groups, id) {
+  return groups.map((g) => (g.id === id ? { ...g, pinned: !g.pinned } : g));
+}
+
 // Secciones en el orden de los grupos; al final "sin grupo" (group: null), que incluye ids de grupo desconocidos.
 export function buildSections(scripts, groups, mode) {
   const known = new Set(groups.map((g) => g.id));
-  const sections = groups.map((group) => ({
+  const sections = orderGroups(groups).map((group) => ({
     group,
     scripts: sortScripts(scripts.filter((s) => s.group === group.id), mode)
   }));
@@ -107,13 +122,26 @@ export function shiftScript(scripts, id, direction) {
   return result;
 }
 
+// Sube (-1) o baja (+1) un grupo dentro de su bloque (fijados / no fijados) según el orden mostrado.
 export function moveGroup(groups, id, direction) {
-  const index = groups.findIndex((g) => g.id === id);
+  const ordered = orderGroups(groups);
+  const index = ordered.findIndex((g) => g.id === id);
   const target = index + direction;
-  if (index < 0 || target < 0 || target >= groups.length) return groups;
-  const result = [...groups];
-  [result[index], result[target]] = [result[target], result[index]];
-  return result;
+  if (index < 0 || target < 0 || target >= ordered.length || !ordered[index].pinned !== !ordered[target].pinned) return groups;
+  [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
+  return ordered;
+}
+
+// Mueve un grupo antes o después de otro (al arrastrar). Adopta el estado de fijado del grupo destino.
+export function moveGroupTo(groups, id, targetId, where = 'before') {
+  const ordered = orderGroups(groups);
+  const moving = ordered.find((g) => g.id === id);
+  const target = ordered.find((g) => g.id === targetId);
+  if (!moving || !target || id === targetId) return groups;
+  const rest = ordered.filter((g) => g.id !== id);
+  const at = rest.findIndex((g) => g.id === targetId);
+  rest.splice(where === 'after' ? at + 1 : at, 0, { ...moving, pinned: !!target.pinned });
+  return rest;
 }
 
 export function setEnabled(scripts, ids, value) {

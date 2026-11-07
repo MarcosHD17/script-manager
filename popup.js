@@ -1,5 +1,6 @@
 import { getScripts, setScripts, getRunStatus, getGroups, setGroups, getSettings, setSettings } from './storage.js';
-import { buildSections, setEnabled, enabledState, ensureGroupColors, moveMany, bakeOrder } from './organize.js';
+import { buildSections, setEnabled, enabledState, ensureGroupColors, moveMany, bakeOrder, orderGroups, setAllCollapsed, togglePinned, moveGroupTo } from './organize.js';
+import { exportAll, importFiles } from './io.js';
 import { matchesUrl } from './match.js';
 import { initTheme } from './theme.js';
 
@@ -10,6 +11,7 @@ document.getElementById('title').textContent = `Script Manager v${chrome.runtime
 let available = true;
 let activeUrl = '';
 let drag = null;
+const toggleAll = document.getElementById('toggleAll');
 const DRAG_THRESHOLD = 5;
 
 async function getActiveTabId() {
@@ -39,7 +41,7 @@ function formatStatus(entry) {
   return entry.ok ? `✔ ${time} (${entry.trigger})` : `✖ ${time}: ${entry.error}`;
 }
 
-function groupHeader(section) {
+function groupHeader(section, collapsed) {
   const group = section.group;
   const state = enabledState(section.scripts);
   const master = document.createElement('input');
@@ -53,9 +55,13 @@ function groupHeader(section) {
 
   const toggle = document.createElement('button');
   toggle.className = 'mini';
-  toggle.textContent = group?.collapsed ? '▸' : '▾';
+  toggle.textContent = collapsed ? '▸' : '▾';
+  toggle.title = 'Plegar o desplegar';
   toggle.addEventListener('click', async () => {
-    if (!group) return;
+    if (!group) {
+      const settings = await getSettings();
+      return setSettings({ ...settings, ungroupedCollapsed: !settings.ungroupedCollapsed });
+    }
     await setGroups((await getGroups()).map((g) => (g.id === group.id ? { ...g, collapsed: !g.collapsed } : g)));
   });
 
@@ -70,6 +76,23 @@ function groupHeader(section) {
   li.dataset.groupId = group?.id ?? '';
   if (group) li.style.setProperty('--gcolor', group.color);
   li.append(master, toggle, name, count);
+  if (group) {
+    const grip = document.createElement('span');
+    grip.className = 'grip ggrip';
+    grip.textContent = '⠿';
+    grip.title = 'Arrastra para mover el grupo';
+    grip.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      drag = { kind: 'group', id: group.id, name: group.name, startX: e.clientX, startY: e.clientY, active: false, drop: null };
+    });
+    const pin = document.createElement('button');
+    pin.className = 'mini pin' + (group.pinned ? ' on' : '');
+    pin.textContent = '📌';
+    pin.title = group.pinned ? 'Quitar fijado' : 'Fijar el grupo arriba';
+    pin.addEventListener('click', async () => setGroups(togglePinned(await getGroups(), group.id)));
+    li.prepend(grip);
+    li.append(pin);
+  }
   return li;
 }
 
@@ -148,14 +171,17 @@ function scriptItem(script, statuses, color) {
 async function render() {
   const [scripts, storedGroups, statuses, settings] = await Promise.all([getScripts(), getGroups(), getRunStatus(), getSettings()]);
   const groups = ensureGroupColors(storedGroups).groups;
+  toggleAll.hidden = groups.length === 0;
+  toggleAll.textContent = groups.some((g) => !g.collapsed) || !settings.ungroupedCollapsed ? '⊟ Contraer todo' : '⊞ Desplegar todo';
   list.replaceChildren();
   if (!scripts.length) {
     list.innerHTML = '<li class="empty">Sin scripts. Crea uno en "Gestionar".</li>';
     return;
   }
   for (const section of buildSections(scripts, groups, settings.sort)) {
-    if (groups.length && (section.group || section.scripts.length)) list.append(groupHeader(section));
-    if (section.group?.collapsed) continue;
+    const collapsed = section.group ? section.group.collapsed : settings.ungroupedCollapsed;
+    if (groups.length && (section.group || section.scripts.length)) list.append(groupHeader(section, collapsed));
+    if (collapsed && groups.length) continue;
     section.scripts.forEach((script) => list.append(scriptItem(script, statuses, section.group?.color)));
   }
 }
@@ -182,6 +208,16 @@ function updateDropTarget(e) {
   drag.drop = null;
   const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('li[data-id], li.group-head');
   if (!target) return;
+  if (drag.kind === 'group') {
+    const targetGroupId = target.dataset.id ? target.dataset.group : target.dataset.groupId;
+    if (!targetGroupId || targetGroupId === drag.id) return;
+    const anchor = list.querySelector(`li.group-head[data-group-id="${CSS.escape(targetGroupId)}"]`) ?? target;
+    const rect = anchor.getBoundingClientRect();
+    const after = e.clientY >= rect.top + rect.height / 2;
+    drag.drop = { targetGroupId, where: after ? 'after' : 'before' };
+    anchor.classList.add(after ? 'drop-after' : 'drop-before');
+    return;
+  }
   if (target.dataset.id) {
     if (target.dataset.id === drag.id) return;
     const rect = target.getBoundingClientRect();
@@ -200,8 +236,9 @@ function autoScroll(e) {
   else if (e.clientY > rect.bottom - 30) list.scrollTop += 12;
 }
 
-async function commitDrop({ id, drop }) {
+async function commitDrop({ id, drop, kind }) {
   if (!drop) return;
+  if (kind === 'group') return setGroups(moveGroupTo(await getGroups(), id, drop.targetGroupId, drop.where));
   const [scripts, groups, settings] = await Promise.all([getScripts(), getGroups(), getSettings()]);
   let base = scripts;
   // Con un orden automático, soltar en una posición concreta pasa a Manual conservando lo que se veía.
@@ -217,10 +254,10 @@ document.addEventListener('pointermove', (e) => {
   if (!drag.active) {
     if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < DRAG_THRESHOLD) return;
     drag.active = true;
-    list.querySelector(`li[data-id="${CSS.escape(drag.id)}"]`)?.classList.add('dragging');
+    list.querySelector(drag.kind === 'group' ? `li.group-head[data-group-id="${CSS.escape(drag.id)}"]` : `li[data-id="${CSS.escape(drag.id)}"]`)?.classList.add('dragging');
     const ghost = document.createElement('div');
     ghost.className = 'drag-ghost';
-    ghost.textContent = drag.name;
+    ghost.textContent = drag.kind === 'group' ? `📁 ${drag.name}` : drag.name;
     document.body.append(ghost);
     document.body.classList.add('is-dragging');
   }
@@ -239,6 +276,27 @@ document.addEventListener('pointerup', () => {
 });
 document.addEventListener('pointercancel', () => { drag = null; endDragUI(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && drag?.active) { drag = null; endDragUI(); } });
+
+// ----- Importar, exportar y plegar todo -----
+const msg = document.getElementById('msg');
+const importFile = document.getElementById('importFile');
+function notify(text, kind = 'ok') { msg.hidden = false; msg.className = kind === 'ok' ? 'ok' : 'alert'; msg.textContent = text; }
+document.getElementById('exportAll').addEventListener('click', async () => {
+  const count = await exportAll();
+  notify(count ? `Exportados ${count} scripts.` : 'No hay scripts para exportar.', count ? 'ok' : 'alert');
+});
+document.getElementById('importBtn').addEventListener('click', () => importFile.click());
+importFile.addEventListener('change', async () => {
+  const result = await importFiles([...importFile.files]);
+  importFile.value = '';
+  notify(result.message, result.ok ? 'ok' : 'alert');
+});
+toggleAll.addEventListener('click', async () => {
+  const [groups, settings] = await Promise.all([getGroups(), getSettings()]);
+  const collapse = groups.some((g) => !g.collapsed) || !settings.ungroupedCollapsed;
+  await setGroups(setAllCollapsed(groups, collapse));
+  await setSettings({ ...settings, ungroupedCollapsed: collapse });
+});
 
 // ----- Crear un script nuevo desde el popup -----
 const newForm = document.getElementById('newForm');
