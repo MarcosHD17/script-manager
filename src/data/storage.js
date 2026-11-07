@@ -55,14 +55,17 @@ export async function setGMValues(values) {
   await chrome.storage.local.set({ [GM_VALUES_KEY]: values });
 }
 
-// Ajustes globales: ungroupedCollapsed = "Sin grupo" plegado; dock = agrupar flotantes (2+); auto = detectar flotantes sin mount(); sort = orden de la lista; theme = tema de las ventanas.
+// Ajustes globales: ungroupedCollapsed = "Sin grupo" plegado; dock = agrupar flotantes (2+, experimental); auto = detectar flotantes sin mount() (experimental); floatingV2 = migración hecha; sort = orden de la lista; theme = tema de las ventanas.
 export async function getSettings() {
   const data = await chrome.storage.local.get(SETTINGS_KEY);
-  return { dock: true, auto: true, sort: 'manual', theme: 'auto', ungroupedCollapsed: false, fontSize: 13, ...(data[SETTINGS_KEY] ?? {}) };
+  const stored = data[SETTINGS_KEY] ?? {};
+  // Migración: antes dock/auto venían activados por defecto y podían congelar páginas con 2+ scripts; se desactivan una vez.
+  const legacy = stored.floatingV2 ? {} : { dock: false, auto: false };
+  return { dock: false, auto: false, sort: 'manual', theme: 'auto', ungroupedCollapsed: false, fontSize: 13, ...stored, ...legacy };
 }
 
 export async function setSettings(settings) {
-  await chrome.storage.local.set({ [SETTINGS_KEY]: settings });
+  await chrome.storage.local.set({ [SETTINGS_KEY]: { ...settings, floatingV2: true } });
 }
 
 export const STORAGE_KEYS = { SCRIPTS_KEY, RUN_STATUS_KEY, SETTINGS_KEY };

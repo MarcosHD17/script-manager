@@ -1,5 +1,11 @@
 # Registro de cambios
 
+## 0.15.0
+- fix: con 2 o más scripts con componentes flotantes en la misma página, el contenedor ("Agrupar flotantes") los movía a su Shadow DOM; los scripts que comprueban su elemento con `document.getElementById` dejaban de encontrarlo, lo recreaban y se formaba un bucle infinito de mutaciones que congelaba la pestaña (solo "cargaba" uno y los demás no hacían nada). Reproducido con el userscript del usuario más un segundo script flotante.
+- fix: "Agrupar flotantes" y "Detectar flotantes automáticamente" pasan a ser opt-in (por defecto desactivados) y se desactivan una vez en instalaciones existentes (`floatingV2`); siguen disponibles como experimentales en el popup.
+- fix: freno anti-bucle en el runtime: si un componente se registra más de 8 veces en 1 s, se deja de intervenir y queda flotante donde el script lo puso.
+- Nota: ejecutar manualmente un script ya cargado en la página no lo reinicia si el script se protege con `if (document.getElementById(...)) return`; recarga la pestaña para una carga limpia.
+
 ## 0.14.0
 - fix: los patrones de URL se normalizan al estilo Tampermonkey (`src/core/patterns.js`): `https://claude.com*` → `https://claude.com/*`, `example.com` → `*://example.com/*`, `http*://` → `*://`, `*example.com` → `*://*.example.com/*`, esquema duplicado y puertos. Antes un patrón así quedaba inválido: el script importado se quedaba sin patrones y no se ejecutaba nunca.
 - fix: `matchesUrl` normaliza al evaluar, de modo que los scripts ya guardados con patrones sin normalizar empiezan a funcionar sin editarlos.

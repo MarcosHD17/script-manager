@@ -18,6 +18,9 @@ Organizada por capas en `src/` (detalle y reglas de dependencia en `ARCHITECTURE
 ## Modelo de datos
 `{ id, name, matches: string[], code, enabled }`. Los patrones siguen el formato de match patterns de Chrome.
 
+## Varios scripts en una página
+Cada script se ejecuta por separado en el mundo USER_SCRIPT de la pestaña. El contenedor flotante ("Agrupar flotantes en una lista") y la detección automática de flotantes están **desactivados por defecto** (experimentales): mover elementos a un Shadow DOM rompe a los scripts que los buscan con `document.getElementById`/`querySelector`. Si los activas y un componente se recrea sin parar, el runtime deja de intervenir tras 8 registros en 1 s. Ejecutar un script manualmente sobre una página donde ya está cargado no lo reinicia: recarga la pestaña.
+
 ## Patrones de URL
 Se aceptan match patterns de Chrome y formas tolerantes de userscript, que se normalizan al guardar o importar: `https://sitio.com/*`, `https://*.sitio.com/*`, `https://sitio.com*`, `sitio.com`, `http*://…`, `<all_urls>`. Varios patrones: uno por línea (o separados por comas). Un patrón sin arreglo no deja guardar. Los patrones no se versionan.
 

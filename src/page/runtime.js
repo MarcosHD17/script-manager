@@ -41,6 +41,18 @@ export function bootstrap(config) {
   let listEl = null;
   let depth = 0; // >0 mientras el propio runtime manipula el DOM (evita auto-detectarse)
   let current = null; // script en ejecución síncrona (atribución de componentes auto-detectados)
+  const churn = new Map(); // clave -> { n, t }: registros recientes (freno anti-bucle)
+
+  // Si un script recrea su componente en cuanto lo movemos al contenedor (porque ya no lo encuentra con
+  // document.getElementById), se formaría un bucle infinito que congela la página: tras 8 registros en 1 s se deja de intervenir.
+  function tooChurny(key) {
+    const now = Date.now();
+    const rec = churn.get(key) ?? { n: 0, t: now };
+    if (now - rec.t > 1000) { rec.n = 0; rec.t = now; }
+    rec.n++;
+    churn.set(key, rec);
+    return rec.n > 8;
+  }
 
   // "auto" sigue el tema claro/oscuro del sistema.
   function applyDockTheme() {
@@ -196,6 +208,7 @@ export function bootstrap(config) {
     const label = node.getAttribute('aria-label') || node.id || node.textContent.trim().slice(0, 24) || node.tagName.toLowerCase();
     const suffix = node.id || (current ? current.count++ : label);
     const key = current ? `${current.id}:auto:${suffix}` : `auto:${suffix}`;
+    if (tooChurny(key)) return; // el componente queda flotante donde el script lo puso
     register(key, node, current ? current.name : label, true, current?.id);
   }
 
