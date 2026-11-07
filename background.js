@@ -50,7 +50,7 @@ function saveStatus(id, entry) {
 async function executeWithUserScripts(tabId, script, config) {
   const js = [
     { code: `(${bootstrap.toString()})(${JSON.stringify(config)});` },
-    { code: `(function (ScriptManager) {\n${script.code}\n})(globalThis.__ScriptManager.forScript(${JSON.stringify(script.id)}, ${JSON.stringify(script.name)}));` }
+    { code: `(function () {\nconst sm = globalThis.__ScriptManager;\nsm.begin(${JSON.stringify(script.id)}, ${JSON.stringify(script.name)});\ntry {\n(function (ScriptManager) {\n${script.code}\n})(sm.forScript(${JSON.stringify(script.id)}, ${JSON.stringify(script.name)}));\n} finally { sm.end(); }\n})();` }
   ];
   const results = await chrome.userScripts.execute({ target: { tabId }, world: 'USER_SCRIPT', js });
   const failed = results?.find((r) => r.error);
@@ -63,7 +63,7 @@ async function runScript(tabId, script, trigger) {
   try {
     if (!(await isAvailable())) throw new Error('Falta el permiso "Permitir scripts de usuario"');
     const settings = await getSettings();
-    await executeWithUserScripts(tabId, script, { dock: settings.dock, version: chrome.runtime.getManifest().version });
+    await executeWithUserScripts(tabId, script, { dock: settings.dock, auto: settings.auto, version: chrome.runtime.getManifest().version });
   } catch (error) {
     entry.ok = false;
     entry.error = error.message;

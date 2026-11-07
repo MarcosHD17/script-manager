@@ -23,7 +23,9 @@ const handle = ScriptManager.mount(box, { title: 'Mi panel', id: 'main' });
 // handle.remove(); handle.setTitle('Otro título');
 ```
 - Con 2+ componentes montados se agrupan en un contenedor tipo lista; con uno solo conserva su posición.
-- Solo se agrupan los componentes montados con `mount`; elementos flotantes creados por otros medios no se detectan.
+- Detección automática (ajuste del popup): los elementos `position:fixed` que un script añade directo a `<body>`/`<html>` se agrupan sin llamar a `mount`. Excluir con `data-sm-ignore`. Se ignoran overlays mayores al 60% de la ventana.
+- Los parches DOM viven solo en el mundo del script de usuario; no alteran los scripts de la página.
+- No se detectan elementos anidados dentro de otros contenedores ni los que cambian a `fixed` después de insertarse.
 - Cada script corre en su propia función: sus variables no chocan con las de otros scripts.
 
 ## Versionado

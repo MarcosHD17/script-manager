@@ -6,6 +6,7 @@ export function bootstrap(config) {
     g.__ScriptManager.configure(config);
     return;
   }
+  g.__smRestore?.();
   document.getElementById('__sm-dock')?.remove();
 
   const CSS = [
@@ -25,9 +26,11 @@ export function bootstrap(config) {
   ];
 
   const panels = new Map();
-  const state = { dock: config.dock };
+  const state = { dock: config.dock, auto: config.auto };
   let host = null;
   let listEl = null;
+  let depth = 0; // >0 mientras el propio runtime manipula el DOM (evita auto-detectarse)
+  let current = null; // script en ejecución síncrona (atribución de componentes auto-detectados)
 
   function makeButton(label, title) {
     const btn = document.createElement('button');
@@ -56,6 +59,8 @@ export function bootstrap(config) {
       head.append(title, min);
       dockEl.append(head, listEl);
       shadow.append(style, dockEl);
+      // Si un script elimina su componente mientras está en el contenedor, se limpia la tarjeta.
+      new MutationObserver(() => render()).observe(listEl, { childList: true, subtree: true });
     }
     if (!host.isConnected) document.documentElement.appendChild(host);
   }
@@ -106,13 +111,21 @@ export function bootstrap(config) {
 
   // El contenedor solo aplica con 2+ componentes; con uno solo se respeta su posición original.
   function render() {
-    const items = [...panels.values()];
-    if (state.dock && items.length >= 2) {
-      ensureHost();
-      items.forEach((item) => { if (!item.docked) dock(item); });
-    } else {
-      items.forEach(free);
-      host?.remove();
+    depth++;
+    try {
+      for (const [key, item] of panels) {
+        if (item.auto && !item.el.isConnected) { item.card?.remove(); panels.delete(key); }
+      }
+      const items = [...panels.values()];
+      if (state.dock && items.length >= 2) {
+        ensureHost();
+        items.forEach((item) => { if (!item.docked) dock(item); });
+      } else {
+        items.forEach(free);
+        host?.remove();
+      }
+    } finally {
+      depth--;
     }
   }
 
@@ -120,16 +133,20 @@ export function bootstrap(config) {
     const item = panels.get(key);
     if (!item) return;
     panels.delete(key);
-    item.card?.remove();
-    item.el.remove();
+    depth++;
+    try {
+      item.card?.remove();
+      item.el.remove();
+    } finally {
+      depth--;
+    }
     render();
   }
 
-  function mount(scriptId, scriptName, el, opts = {}) {
-    const key = `${scriptId}:${opts.id ?? 'main'}`;
+  function register(key, el, title, auto) {
     remove(key); // re-ejecutar un script reemplaza su componente anterior
     const item = {
-      key, el, title: opts.title ?? scriptName,
+      key, el, title, auto,
       savedCss: el.style.cssText, savedParent: el.parentNode, docked: false, card: null
     };
     panels.set(key, item);
@@ -141,11 +158,51 @@ export function bootstrap(config) {
     };
   }
 
+  // Auto-detección: elementos flotantes (position:fixed) que un script añade directamente a <body>/<html>.
+  function maybeAutoMount(node) {
+    if (!state.auto || depth > 0 || !(node instanceof Element)) return;
+    if (node === host || node.hasAttribute('data-sm-ignore') || !node.isConnected) return;
+    for (const item of panels.values()) if (item.el === node) return;
+    if (getComputedStyle(node).position !== 'fixed') return;
+    const rect = node.getBoundingClientRect();
+    if (rect.width > innerWidth * 0.6 || rect.height > innerHeight * 0.6) return; // overlays/modales grandes se ignoran
+    const label = node.getAttribute('aria-label') || node.id || node.textContent.trim().slice(0, 24) || node.tagName.toLowerCase();
+    const suffix = node.id || (current ? current.count++ : label);
+    const key = current ? `${current.id}:auto:${suffix}` : `auto:${suffix}`;
+    register(key, node, current ? current.name : label, true);
+  }
+
+  // Parches limitados a este mundo aislado: solo afectan a llamadas hechas por los scripts de usuario, no a la página.
+  const patches = [];
+  function patch(proto, name, pick) {
+    const original = proto[name];
+    if (typeof original !== 'function') return;
+    proto[name] = function (...args) {
+      const result = original.apply(this, args);
+      if (depth === 0 && (this === document.body || this === document.documentElement)) {
+        try { pick(args).forEach(maybeAutoMount); } catch { /* nunca romper al script de usuario */ }
+      }
+      return result;
+    };
+    patches.push([proto, name, original]);
+  }
+  patch(Node.prototype, 'appendChild', (a) => [a[0]]);
+  patch(Node.prototype, 'insertBefore', (a) => [a[0]]);
+  patch(Element.prototype, 'append', (a) => a);
+  patch(Element.prototype, 'prepend', (a) => a);
+  patch(Element.prototype, 'insertAdjacentElement',
+    (a) => (['beforeend', 'afterbegin'].includes(String(a[0]).toLowerCase()) ? [a[1]] : []));
+  g.__smRestore = () => patches.forEach(([proto, name, original]) => { proto[name] = original; });
+
   g.__ScriptManager = {
     version: config.version,
-    configure(cfg) { state.dock = cfg.dock; render(); },
+    configure(cfg) { state.dock = cfg.dock; state.auto = cfg.auto; render(); },
+    begin(id, name) { current = { id, name, count: 0 }; },
+    end() { current = null; },
     forScript(scriptId, scriptName) {
-      return { mount: (el, opts) => mount(scriptId, scriptName, el, opts) };
+      return {
+        mount: (el, opts = {}) => register(`${scriptId}:${opts.id ?? 'main'}`, el, opts.title ?? scriptName, false)
+      };
     }
   };
 }

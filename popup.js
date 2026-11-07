@@ -90,6 +90,8 @@ document.getElementById('runAll').addEventListener('click', async () => {
 document.getElementById('openOptions').addEventListener('click', () => chrome.runtime.openOptionsPage());
 chrome.storage.onChanged.addListener(render);
 const dockToggle = document.getElementById('dock');
-getSettings().then((settings) => { dockToggle.checked = settings.dock; });
+const autoToggle = document.getElementById('auto');
+getSettings().then((settings) => { dockToggle.checked = settings.dock; autoToggle.checked = settings.auto; });
+autoToggle.addEventListener('change', async () => setSettings({ ...(await getSettings()), auto: autoToggle.checked }));
 dockToggle.addEventListener('change', async () => setSettings({ ...(await getSettings()), dock: dockToggle.checked }));
 checkStatus().then(render);

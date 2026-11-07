@@ -34,10 +34,10 @@ export async function setRunStatus(status) {
   await chrome.storage.local.set({ [RUN_STATUS_KEY]: status });
 }
 
-// Ajustes globales: dock = agrupar componentes flotantes en una lista cuando hay 2 o más.
+// Ajustes globales: dock = agrupar flotantes en una lista (2+); auto = detectar flotantes sin usar mount().
 export async function getSettings() {
   const data = await chrome.storage.local.get(SETTINGS_KEY);
-  return { dock: true, ...(data[SETTINGS_KEY] ?? {}) };
+  return { dock: true, auto: true, ...(data[SETTINGS_KEY] ?? {}) };
 }
 
 export async function setSettings(settings) {

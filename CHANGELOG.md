@@ -1,5 +1,11 @@
 # Registro de cambios
 
+## 0.4.0
+- feat: detección automática de componentes flotantes: los elementos `position:fixed` que un script añade directamente a `<body>`/`<html>` (appendChild, append, prepend, insertBefore, insertAdjacentElement) se montan solos en el contenedor, sin usar `ScriptManager.mount`.
+- feat: ajuste "Detectar flotantes automáticamente" en el popup; exclusión por atributo `data-sm-ignore`; los overlays grandes (>60% de la ventana) se ignoran.
+- feat: las tarjetas se limpian solas si el script elimina su componente; el título usa el nombre del script.
+- fix: reejecutar un script reemplaza su componente en vez de duplicarlo.
+
 ## 0.3.0
 - feat: API `ScriptManager.mount(elemento, { title, id })` disponible en cada script; con 2+ componentes los agrupa en un contenedor tipo lista (Shadow DOM) con plegar/cerrar por tarjeta y minimizar global. Con un solo componente se respeta su posición original.
 - feat: ajuste "Agrupar flotantes en una lista" en el popup.
