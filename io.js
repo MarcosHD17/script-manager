@@ -2,7 +2,7 @@
 import { getScripts, setScripts, getGroups, setGroups, getHistory, setHistory } from './storage.js';
 import { buildExport, parseImport, mergeScripts } from './transfer.js';
 import { assignGroupsByName } from './organize.js';
-import { ensureVersions } from './versions.js';
+import { ensureVersions, MAX_VERSIONS } from './versions.js';
 
 export const today = () => new Date().toISOString().slice(0, 10);
 export const slug = (text) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'script';
@@ -19,8 +19,8 @@ export function downloadJson(filename, data) {
 
 // Exporta todos los scripts (con su grupo y color). Devuelve la cantidad exportada.
 export async function exportAll() {
-  const [scripts, groups] = await Promise.all([getScripts(), getGroups()]);
-  if (scripts.length) downloadJson(`script-manager-${today()}.json`, buildExport(scripts, groups));
+  const [scripts, groups, history] = await Promise.all([getScripts(), getGroups(), getHistory()]);
+  if (scripts.length) downloadJson(`script-manager-${today()}.json`, buildExport(scripts, groups, history));
   return scripts.length;
 }
 
@@ -48,8 +48,14 @@ export async function importFiles(files) {
   const duplicates = incoming.filter((item) => existing.some((s) => s.id === item.id)).length;
   const replace = duplicates > 0 && confirm(`${duplicates} script(s) ya existen con el mismo id.\nAceptar = reemplazarlos. Cancelar = importarlos como copia.`);
   const merged = mergeScripts(existing, incoming, replace);
-  const grouped = assignGroupsByName(merged.scripts, groups);
-  const versioned = ensureVersions(grouped.scripts, history, Date.now(), 'Importado');
+  // El historial importado viaja en cada script; se guarda aparte, bajo el id final (reemplazo o copia).
+  const importedHistory = { ...history };
+  const withoutHistory = merged.scripts.map(({ history: versions, ...script }) => {
+    if (versions?.length) importedHistory[script.id] = versions.slice(0, MAX_VERSIONS);
+    return script;
+  });
+  const grouped = assignGroupsByName(withoutHistory, groups);
+  const versioned = ensureVersions(grouped.scripts, importedHistory, Date.now(), 'Importado');
   await setHistory(versioned.history);
   await setGroups(grouped.groups);
   await setScripts(versioned.scripts);

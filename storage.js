@@ -70,7 +70,7 @@ export async function setGMValues(values) {
 // Ajustes globales: ungroupedCollapsed = "Sin grupo" plegado; dock = agrupar flotantes (2+); auto = detectar flotantes sin mount(); sort = orden de la lista; theme = tema de las ventanas.
 export async function getSettings() {
   const data = await chrome.storage.local.get(SETTINGS_KEY);
-  return { dock: true, auto: true, sort: 'manual', theme: 'auto', ungroupedCollapsed: false, ...(data[SETTINGS_KEY] ?? {}) };
+  return { dock: true, auto: true, sort: 'manual', theme: 'auto', ungroupedCollapsed: false, fontSize: 13, ...(data[SETTINGS_KEY] ?? {}) };
 }
 
 export async function setSettings(settings) {

@@ -24,6 +24,7 @@ Extensión Manifest V3 que inyecta múltiples scripts por página, activables de
 `{ id, name, matches: string[], code, enabled }`. Los patrones siguen el formato de match patterns de Chrome.
 
 ## Organización, versiones y temas
+- **Eliminar grupos:** pregunta si se borra solo el grupo o el grupo con sus scripts. **Varios grupos:** casilla de la cabecera o Ctrl+clic; la barra de grupos fija, contrae, despliega o elimina; arrastrar uno seleccionado mueve todos. **⤒** lleva un script o grupo al principio. **Letra:** selector en Gestionar.
 - **Grupos:** arrastra el asa ⠿ del grupo para moverlo (Gestionar y popup). 📌 fija un grupo arriba. "Contraer todo / Desplegar todo" actúa sobre todos los grupos y "Sin grupo", que también se puede plegar. En Gestionar el panel superior queda fijo y solo la lista se desplaza.
 - **Importar / exportar desde el popup:** botones "⬇ Exportar" y "⬆ Importar" (si el selector de archivos cierra el popup en tu Chrome, usa Gestionar).
 - **Desde el popup:** "+ Nuevo" crea un script (nombre, patrón —por defecto el origen de la pestaña— y código); ✎ lo abre en Gestionar; el asa ⠿ permite ordenarlo o moverlo a otro grupo (Esc cancela). Cada fila indica si el script se cargará automáticamente en la pestaña actual (activo **y** con patrón coincidente).
@@ -46,7 +47,7 @@ Los scripts pueden usar funciones con privilegios de extensión si se les conced
 
 ## Importar / exportar
 En la página de opciones: "Exportar todos", "Exportar este" e "Importar" (JSON). Formato:
-`{ "format": "script-manager", "formatVersion": 1, "scripts": [{ id, name, matches, code, enabled }] }`.
+`{ "format": "script-manager", "formatVersion": 2, "scripts": [{ id, name, matches, grants, code, enabled, groupName?, groupColor?, history?: [{ rev, at, note, name, matches, grants, code }] }] }`. El historial de versiones viaja en la exportación (el formato 1 sin historial también se importa).
 Los scripts importados quedan desactivados; con ids repetidos se elige reemplazar o crear copia.
 
 ## API para componentes flotantes

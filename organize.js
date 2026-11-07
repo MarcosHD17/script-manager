@@ -132,16 +132,38 @@ export function moveGroup(groups, id, direction) {
   return ordered;
 }
 
-// Mueve un grupo antes o después de otro (al arrastrar). Adopta el estado de fijado del grupo destino.
-export function moveGroupTo(groups, id, targetId, where = 'before') {
+// Mueve uno o varios grupos (conservando su orden mostrado) antes o después de otro. Adoptan el estado de fijado del destino.
+export function moveGroupsTo(groups, ids, targetId, where = 'before') {
   const ordered = orderGroups(groups);
-  const moving = ordered.find((g) => g.id === id);
+  const set = new Set(ids);
+  const moving = ordered.filter((g) => set.has(g.id));
   const target = ordered.find((g) => g.id === targetId);
-  if (!moving || !target || id === targetId) return groups;
-  const rest = ordered.filter((g) => g.id !== id);
+  if (!moving.length || !target || set.has(targetId)) return groups;
+  const rest = ordered.filter((g) => !set.has(g.id));
   const at = rest.findIndex((g) => g.id === targetId);
-  rest.splice(where === 'after' ? at + 1 : at, 0, { ...moving, pinned: !!target.pinned });
+  rest.splice(where === 'after' ? at + 1 : at, 0, ...moving.map((g) => ({ ...g, pinned: !!target.pinned })));
   return rest;
+}
+
+export const moveGroupTo = (groups, id, targetId, where) => moveGroupsTo(groups, [id], targetId, where);
+
+// Lleva un grupo al principio de su bloque (fijados / no fijados).
+export function moveGroupToTop(groups, id) {
+  const ordered = orderGroups(groups);
+  const group = ordered.find((g) => g.id === id);
+  if (!group) return groups;
+  const first = ordered.find((g) => !g.pinned === !group.pinned);
+  return first.id === id ? groups : moveGroupsTo(groups, [id], first.id, 'before');
+}
+
+// Lleva un script al principio de su grupo (el orden del arreglo debe ser el mostrado: ver bakeOrder).
+export function moveToTop(scripts, id) {
+  const current = scripts.find((s) => s.id === id);
+  if (!current) return scripts;
+  const groupId = current.group ?? null;
+  const first = scripts.find((s) => (s.group ?? null) === groupId);
+  if (!first || first.id === id) return scripts;
+  return moveMany(scripts, [id], { targetId: first.id, where: 'before', groupId });
 }
 
 export function setEnabled(scripts, ids, value) {

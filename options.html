@@ -15,6 +15,7 @@
         <input id="search" type="search" placeholder="Buscar por nombre o patrón…">
         <label>Ordenar <select id="sortMode"></select></label>
         <label>Tema <select id="themeSelect"></select></label>
+        <label>Letra <select id="fontSize"></select></label>
         <button id="exportAll">⬇ Exportar todos</button>
         <button id="importBtn">⬆ Importar</button>
         <input id="importFile" type="file" accept=".json,.js,application/json" multiple hidden>
@@ -31,6 +32,15 @@
         <button id="bulkOff">Desactivar</button>
         <button id="bulkClear">Limpiar</button>
         <button id="bulkDelete" class="danger">Eliminar</button>
+      </div>
+      <div id="groupBar" class="bulk groupbar" hidden>
+        <strong id="groupBarCount"></strong>
+        <button id="gbPin" title="Fijar los grupos seleccionados arriba">📌 Fijar</button>
+        <button id="gbUnpin">Quitar fijado</button>
+        <button id="gbCollapse">Contraer</button>
+        <button id="gbExpand">Desplegar</button>
+        <button id="gbClear">Limpiar</button>
+        <button id="gbDelete" class="danger">Eliminar…</button>
       </div>
       <div id="items"></div>
       <div class="hint">Arrastra un script para ordenarlo o moverlo a un grupo · Ctrl/Mayús + clic para seleccionar varios · Esc limpia la selección</div>
@@ -66,6 +76,14 @@
       </details>
     </main>
   </div>
+  <dialog id="deleteDialog">
+    <p id="deleteText"></p>
+    <div class="dlg-actions">
+      <button id="delOnlyGroup">Solo el grupo (los scripts pasan a «Sin grupo»)</button>
+      <button id="delWithScripts" class="danger">El grupo y todos sus scripts</button>
+      <button id="delCancel">Cancelar</button>
+    </div>
+  </dialog>
   <script type="module" src="options.js"></script>
 </body>
 </html>

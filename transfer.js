@@ -2,17 +2,21 @@
 import { parseMetadata } from './metadata.js';
 
 export const EXPORT_FORMAT = 'script-manager';
-export const EXPORT_FORMAT_VERSION = 1;
+export const EXPORT_FORMAT_VERSION = 2; // 2 = incluye el historial de versiones (history) por script
 
-export function buildExport(scripts, groups = []) {
+export function buildExport(scripts, groups = [], history = {}) {
   return {
     format: EXPORT_FORMAT,
     formatVersion: EXPORT_FORMAT_VERSION,
     exportedAt: new Date().toISOString(),
     scripts: scripts.map(({ id, name, matches, grants, code, enabled, group }) => {
       const g = groups.find((candidate) => candidate.id === group);
+      const versions = (history[id] ?? []).map(({ rev, at, note, name: vName, matches: vMatches, grants: vGrants, code: vCode }) => ({
+        rev, at, note: note ?? '', name: vName, matches: vMatches ?? [], grants: vGrants ?? [], code: vCode
+      }));
       return {
         id, name, matches, grants: grants ?? [], code, enabled,
+        ...(versions.length ? { history: versions } : {}),
         ...(g ? { groupName: g.name, ...(g.color ? { groupColor: g.color } : {}) } : {})
       };
     })
@@ -63,7 +67,22 @@ export function parseImport(text, fileName = '') {
     if (!item || typeof item.code !== 'string') { skipped++; continue; }
     const matches = Array.isArray(item.matches) ? item.matches.filter((m) => typeof m === 'string' && m.trim()) : [];
     const grants = Array.isArray(item.grants) ? item.grants.filter((g) => typeof g === 'string' && g.trim()).map((g) => g.trim()) : [];
+    const versions = Array.isArray(item.history)
+      ? item.history
+        .filter((v) => v && Number.isFinite(v.rev) && typeof v.code === 'string')
+        .map((v) => ({
+          rev: v.rev,
+          at: Number.isFinite(v.at) ? v.at : Date.now(),
+          note: typeof v.note === 'string' ? v.note : '',
+          name: typeof v.name === 'string' && v.name.trim() ? v.name : 'Sin nombre',
+          matches: Array.isArray(v.matches) ? v.matches.filter((m) => typeof m === 'string') : [],
+          grants: Array.isArray(v.grants) ? v.grants.filter((g) => typeof g === 'string') : [],
+          code: v.code
+        }))
+        .sort((a, b) => b.rev - a.rev)
+      : [];
     scripts.push({
+      ...(versions.length ? { history: versions } : {}),
       id: typeof item.id === 'string' && item.id.trim() ? item.id.trim() : crypto.randomUUID(),
       name: typeof item.name === 'string' && item.name.trim() ? item.name.trim() : 'Sin nombre',
       matches: matches.length ? matches.map((m) => m.trim()) : ['<all_urls>'],

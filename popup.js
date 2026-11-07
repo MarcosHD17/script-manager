@@ -1,5 +1,5 @@
 import { getScripts, setScripts, getRunStatus, getGroups, setGroups, getSettings, setSettings } from './storage.js';
-import { buildSections, setEnabled, enabledState, ensureGroupColors, moveMany, bakeOrder, orderGroups, setAllCollapsed, togglePinned, moveGroupTo } from './organize.js';
+import { buildSections, setEnabled, enabledState, ensureGroupColors, moveMany, bakeOrder, orderGroups, setAllCollapsed, togglePinned, moveGroupsTo, moveGroupToTop, moveToTop } from './organize.js';
 import { exportAll, importFiles } from './io.js';
 import { matchesUrl } from './match.js';
 import { initTheme } from './theme.js';
@@ -36,6 +36,27 @@ async function checkStatus() {
   warning.append(text, open);
 }
 
+// Botón de activación (reemplaza a la casilla): estados 'all' (ON), 'some' (MIX) y 'none' (OFF).
+function toggleButton(state, title, onClick) {
+  const button = document.createElement('button');
+  button.className = `tgl ${state}`;
+  button.textContent = state === 'all' ? 'ON' : state === 'some' ? 'MIX' : 'OFF';
+  button.title = title;
+  button.addEventListener('click', onClick);
+  return button;
+}
+
+// Lleva un script al principio de su grupo (con un orden automático pasa antes a Manual).
+async function sendToTop(id) {
+  const [scripts, groups, settings] = await Promise.all([getScripts(), getGroups(), getSettings()]);
+  let base = scripts;
+  if (settings.sort !== 'manual') {
+    base = bakeOrder(scripts, ensureGroupColors(groups).groups, settings.sort);
+    await setSettings({ ...settings, sort: 'manual' });
+  }
+  await setScripts(moveToTop(base, id));
+}
+
 function formatStatus(entry) {
   const time = new Date(entry.time).toLocaleTimeString();
   return entry.ok ? `✔ ${time} (${entry.trigger})` : `✖ ${time}: ${entry.error}`;
@@ -44,13 +65,8 @@ function formatStatus(entry) {
 function groupHeader(section, collapsed) {
   const group = section.group;
   const state = enabledState(section.scripts);
-  const master = document.createElement('input');
-  master.type = 'checkbox';
-  master.checked = state === 'all';
-  master.indeterminate = state === 'some';
-  master.title = 'Activar o desactivar todos';
-  master.addEventListener('change', async () => {
-    await setScripts(setEnabled(await getScripts(), section.scripts.map((s) => s.id), master.checked));
+  const master = toggleButton(state, 'Activar o desactivar todos', async () => {
+    await setScripts(setEnabled(await getScripts(), section.scripts.map((s) => s.id), state !== 'all'));
   });
 
   const toggle = document.createElement('button');
@@ -90,8 +106,13 @@ function groupHeader(section, collapsed) {
     pin.textContent = '📌';
     pin.title = group.pinned ? 'Quitar fijado' : 'Fijar el grupo arriba';
     pin.addEventListener('click', async () => setGroups(togglePinned(await getGroups(), group.id)));
+    const top = document.createElement('button');
+    top.className = 'mini';
+    top.textContent = '⤒';
+    top.title = 'Llevar el grupo al principio';
+    top.addEventListener('click', async () => setGroups(moveGroupToTop(await getGroups(), group.id)));
     li.prepend(grip);
-    li.append(pin);
+    li.append(pin, top);
   }
   return li;
 }
@@ -105,12 +126,8 @@ function scriptItem(script, statuses, color) {
     li.style.setProperty('--gcolor', color);
   }
 
-  const checkbox = document.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.title = 'Activar en carga automática';
-  checkbox.checked = script.enabled;
-  checkbox.addEventListener('change', async () => {
-    await setScripts(setEnabled(await getScripts(), [script.id], checkbox.checked));
+  const checkbox = toggleButton(script.enabled ? 'all' : 'none', 'Activar o desactivar la carga automática', async () => {
+    await setScripts(setEnabled(await getScripts(), [script.id], !script.enabled));
   });
 
   const info = document.createElement('div');
@@ -164,7 +181,13 @@ function scriptItem(script, statuses, color) {
     drag = { id: script.id, name: script.name, startX: e.clientX, startY: e.clientY, active: false, drop: null };
   });
 
-  li.append(grip, checkbox, info, edit, run);
+  const top = document.createElement('button');
+  top.className = 'mini';
+  top.textContent = '⤒';
+  top.title = 'Llevar al principio de su grupo';
+  top.addEventListener('click', () => sendToTop(script.id));
+
+  li.append(grip, checkbox, info, top, edit, run);
   return li;
 }
 
@@ -172,7 +195,7 @@ async function render() {
   const [scripts, storedGroups, statuses, settings] = await Promise.all([getScripts(), getGroups(), getRunStatus(), getSettings()]);
   const groups = ensureGroupColors(storedGroups).groups;
   toggleAll.hidden = groups.length === 0;
-  toggleAll.textContent = groups.some((g) => !g.collapsed) || !settings.ungroupedCollapsed ? '⊟ Contraer todo' : '⊞ Desplegar todo';
+  toggleAll.textContent = groups.some((g) => !g.collapsed) || !settings.ungroupedCollapsed ? '⊟ Contraer' : '⊞ Desplegar';
   list.replaceChildren();
   if (!scripts.length) {
     list.innerHTML = '<li class="empty">Sin scripts. Crea uno en "Gestionar".</li>';
@@ -238,7 +261,7 @@ function autoScroll(e) {
 
 async function commitDrop({ id, drop, kind }) {
   if (!drop) return;
-  if (kind === 'group') return setGroups(moveGroupTo(await getGroups(), id, drop.targetGroupId, drop.where));
+  if (kind === 'group') return setGroups(moveGroupsTo(await getGroups(), [id], drop.targetGroupId, drop.where));
   const [scripts, groups, settings] = await Promise.all([getScripts(), getGroups(), getSettings()]);
   let base = scripts;
   // Con un orden automático, soltar en una posición concreta pasa a Manual conservando lo que se veía.
@@ -336,11 +359,20 @@ document.getElementById('runAll').addEventListener('click', async () => {
 document.getElementById('openOptions').addEventListener('click', () => openOptions());
 chrome.storage.onChanged.addListener(render);
 
-const dockToggle = document.getElementById('dock');
-const autoToggle = document.getElementById('auto');
-getSettings().then((settings) => { dockToggle.checked = settings.dock; autoToggle.checked = settings.auto; });
-dockToggle.addEventListener('change', async () => setSettings({ ...(await getSettings()), dock: dockToggle.checked }));
-autoToggle.addEventListener('change', async () => setSettings({ ...(await getSettings()), auto: autoToggle.checked }));
+const settingButtons = [['dock', 'Agrupar flotantes en una lista (si hay 2 o más)'], ['auto', 'Detectar flotantes automáticamente']];
+async function renderSettings() {
+  const settings = await getSettings();
+  const box = document.getElementById('opts');
+  box.replaceChildren(...settingButtons.map(([key, label]) => {
+    const button = document.createElement('button');
+    button.className = `tgl opt-btn ${settings[key] ? 'all' : 'none'}`;
+    button.textContent = `${settings[key] ? '●' : '○'} ${label}`;
+    button.addEventListener('click', async () => setSettings({ ...(await getSettings()), [key]: !settings[key] }));
+    return button;
+  }));
+}
+renderSettings();
+chrome.storage.onChanged.addListener(renderSettings);
 
 initTheme();
 chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => { activeUrl = tab?.url ?? ''; }).catch(() => {})

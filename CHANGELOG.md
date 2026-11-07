@@ -1,5 +1,14 @@
 # Registro de cambios
 
+## 0.12.0
+- fix: la exportación incluye el historial de versiones de cada script (formato 2, campo `history`); al importar se restaura bajo el id final (reemplazo o copia). Los archivos antiguos (formato 1) se siguen importando.
+- feat: al eliminar un grupo (o varios) se pregunta si se borra solo el grupo (scripts a "Sin grupo") o el grupo con sus scripts (y su historial).
+- feat: selección de varios grupos (casilla de la cabecera o Ctrl+clic); barra de grupos para fijar, quitar fijado, contraer, desplegar y eliminar; arrastrar uno seleccionado mueve todos.
+- feat: los grupos se arrastran desde cualquier parte de la cabecera (no solo el asa).
+- feat: botón ⤒ para llevar un script (o un grupo) al principio de su lista, en Gestionar y en el popup. En Gestionar se quitan los botones ▲▼ de scripts y grupos.
+- feat: en el popup las casillas pasan a botones ON / OFF / MIX (scripts, grupos y ajustes).
+- feat: Gestionar permite elegir el tamaño de letra (13 a 22 px); los interruptores y el panel lateral escalan con ella.
+
 ## 0.11.0
 - feat: el popup incluye "Exportar" e "Importar" (misma lógica que Gestionar, ahora compartida en `io.js`). Si tu Chrome cierra el popup al abrir el selector de archivos, usa Importar en Gestionar.
 - feat: los grupos se pueden mover arrastrando su asa ⠿ (Gestionar y popup); en Gestionar siguen los botones ▲▼.
