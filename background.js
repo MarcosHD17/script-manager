@@ -1,71 +1,101 @@
-import { getScripts, setScripts, setErrors, DEFAULT_SCRIPTS, STORAGE_KEYS } from './storage.js';
+import { getScripts, setScripts, getRunStatus, setRunStatus, DEFAULT_SCRIPTS } from './storage.js';
 
-async function isUserScriptsAvailable() {
+// Comprueba que la API userScripts esté disponible y el permiso de usuario activado.
+async function isAvailable() {
   try {
     await chrome.userScripts.getScripts();
-    return true;
+    return typeof chrome.userScripts.execute === 'function';
   } catch {
     return false;
   }
 }
 
-// Sincroniza los scripts habilitados con la API userScripts (reemplazo total, idempotente).
-async function doSync() {
-  if (!(await isUserScriptsAvailable())) return { available: false, registered: 0 };
+// Implementación de match patterns de Chrome (esquema, host con comodín, ruta con comodín).
+function matchesUrl(pattern, url) {
+  let parsed;
+  try { parsed = new URL(url); } catch { return false; }
+  const proto = parsed.protocol.slice(0, -1);
+  if (pattern === '<all_urls>') return ['http', 'https', 'file', 'ftp'].includes(proto);
 
-  const scripts = await getScripts();
-  const registered = await chrome.userScripts.getScripts();
-  if (registered.length) {
-    await chrome.userScripts.unregister({ ids: registered.map((s) => s.id) });
-  }
-
-  const errors = {};
-  for (const script of scripts) {
-    if (!script.enabled) continue;
-    try {
-      await chrome.userScripts.register([{
-        id: script.id,
-        matches: script.matches,
-        js: [{ code: script.code }],
-        runAt: 'document_idle',
-        world: 'USER_SCRIPT'
-      }]);
-    } catch (error) {
-      errors[script.id] = error.message;
+  const m = pattern.match(/^(\*|https?|file|ftp):\/\/([^/]*)(\/.*)$/);
+  if (!m) return false;
+  const [, scheme, host, path] = m;
+  if (scheme === '*' ? !['http', 'https'].includes(proto) : scheme !== proto) return false;
+  if (host !== '*') {
+    if (host.startsWith('*.')) {
+      const base = host.slice(2);
+      if (parsed.hostname !== base && !parsed.hostname.endsWith('.' + base)) return false;
+    } else if (parsed.hostname !== host) {
+      return false;
     }
   }
-  await setErrors(errors);
-  return { available: true, registered: (await chrome.userScripts.getScripts()).length };
+  const regex = new RegExp('^' + path.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$');
+  return regex.test(parsed.pathname + parsed.search);
 }
 
-// Cola serial: evita condiciones de carrera ("Duplicate script ID") entre sincronizaciones concurrentes.
-let syncQueue = Promise.resolve();
-function syncScripts() {
-  const run = syncQueue.then(doSync);
-  syncQueue = run.catch((error) => console.error('Error de sincronización:', error));
-  return run;
+// Escrituras de estado serializadas para evitar pisarse entre ejecuciones concurrentes.
+let statusQueue = Promise.resolve();
+function saveStatus(id, entry) {
+  statusQueue = statusQueue.then(async () => {
+    const all = await getRunStatus();
+    all[id] = entry;
+    await setRunStatus(all);
+  }).catch((error) => console.error('Error guardando estado:', error));
+  return statusQueue;
 }
 
-chrome.runtime.onInstalled.addListener(async ({ reason }) => {
-  if (reason === 'install' && (await getScripts()).length === 0) {
-    await setScripts(DEFAULT_SCRIPTS);
+// Ejecuta un script en una pestaña (mundo USER_SCRIPT, evita CSP de la página).
+async function runScript(tabId, script, trigger) {
+  const entry = { ok: true, time: Date.now(), trigger };
+  try {
+    const results = await chrome.userScripts.execute({
+      target: { tabId },
+      world: 'USER_SCRIPT',
+      js: [{ code: script.code }]
+    });
+    const failed = results?.find((r) => r.error);
+    if (failed) { entry.ok = false; entry.error = String(failed.error); }
+  } catch (error) {
+    entry.ok = false;
+    entry.error = error.message;
   }
-  await syncScripts();
+  await saveStatus(script.id, entry);
+  return entry;
+}
+
+// Ejecución automática: al terminar de cargar una pestaña, corre los scripts activos cuyo patrón coincida.
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status !== 'complete' || !tab.url) return;
+  const scripts = (await getScripts()).filter(
+    (s) => s.enabled && s.matches.some((pattern) => matchesUrl(pattern, tab.url))
+  );
+  for (const script of scripts) await runScript(tabId, script, 'auto');
 });
 
-chrome.runtime.onStartup.addListener(syncScripts);
-
-// Re-sincroniza ante cambios de la lista (popup u opciones).
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes[STORAGE_KEYS.SCRIPTS_KEY]) syncScripts();
-});
-
-// Permite forzar la sincronización desde la UI (p. ej. tras activar "Permitir scripts de usuario").
+// Ejecución manual desde la UI: 'run' (un script, ignora estado y patrón) / 'runAll' (todos los activos, ignora patrón).
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.type !== 'sync') return false;
-  syncScripts().then(sendResponse, (error) => sendResponse({ available: false, registered: 0, error: error.message }));
+  (async () => {
+    if (message.type === 'status') return { available: await isAvailable() };
+    const scripts = await getScripts();
+    if (message.type === 'run') {
+      const script = scripts.find((s) => s.id === message.scriptId);
+      return script ? { results: [await runScript(message.tabId, script, 'manual')] } : { results: [] };
+    }
+    if (message.type === 'runAll') {
+      const results = [];
+      for (const script of scripts.filter((s) => s.enabled)) results.push(await runScript(message.tabId, script, 'manual'));
+      return { results };
+    }
+    return {};
+  })().then(sendResponse, (error) => sendResponse({ error: error.message }));
   return true;
 });
 
-// Sincroniza en cada arranque del service worker.
-syncScripts();
+chrome.runtime.onInstalled.addListener(async ({ reason }) => {
+  if (reason === 'install' && (await getScripts()).length === 0) await setScripts(DEFAULT_SCRIPTS);
+  // Limpia registros persistentes de la v0.1 (userScripts.register) para evitar ejecuciones duplicadas.
+  try {
+    const registered = await chrome.userScripts.getScripts();
+    if (registered.length) await chrome.userScripts.unregister({ ids: registered.map((s) => s.id) });
+  } catch { /* API no disponible: se informa en el popup */ }
+});

@@ -24,3 +24,4 @@ button.danger { color: #d93025; }
 .editor textarea.code { flex: 1; font-family: ui-monospace, monospace; min-height: 220px; }
 .row { display: flex; gap: 8px; }
 .ok { background: #e6f4ea; border: 1px solid #34a853; padding: 8px; margin: 8px; border-radius: 6px; }
+.bar { padding: 6px 10px; border-bottom: 1px solid #dadce0; } .bar button { width: 100%; }

@@ -1,22 +1,29 @@
-import { getScripts, setScripts, getErrors } from './storage.js';
+import { getScripts, setScripts, getRunStatus } from './storage.js';
 
 const list = document.getElementById('list');
 const warning = document.getElementById('warning');
+document.getElementById('title').textContent = `Script Manager v${chrome.runtime.getManifest().version}`;
 
-// Fuerza sincronización y muestra el estado real de registro.
+async function getActiveTabId() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  return tab?.id;
+}
+
 async function checkStatus() {
-  const status = await chrome.runtime.sendMessage({ type: 'sync' });
-  warning.hidden = false;
+  const status = await chrome.runtime.sendMessage({ type: 'status' });
+  warning.hidden = !!status?.available;
   if (!status?.available) {
-    warning.textContent = 'Activa "Permitir scripts de usuario" en chrome://extensions > Detalles de esta extensión (o el modo desarrollador en Chrome < 138).';
-  } else {
-    warning.className = 'ok';
-    warning.textContent = `Scripts registrados: ${status.registered}. Recarga la pestaña para aplicarlos.`;
+    warning.textContent = 'Activa "Permitir scripts de usuario" en chrome://extensions > Detalles de esta extensión y requiere Chrome 135+.';
   }
 }
 
+function formatStatus(entry) {
+  const time = new Date(entry.time).toLocaleTimeString();
+  return entry.ok ? `✔ ${time} (${entry.trigger})` : `✖ ${time}: ${entry.error}`;
+}
+
 async function render() {
-  const [scripts, errors] = await Promise.all([getScripts(), getErrors()]);
+  const [scripts, statuses] = await Promise.all([getScripts(), getRunStatus()]);
   list.replaceChildren();
   if (!scripts.length) {
     list.innerHTML = '<li class="empty">Sin scripts. Crea uno en "Gestionar".</li>';
@@ -24,8 +31,10 @@ async function render() {
   }
   for (const script of scripts) {
     const li = document.createElement('li');
+
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
+    checkbox.title = 'Activar en carga automática';
     checkbox.checked = script.enabled;
     checkbox.addEventListener('change', async () => {
       const current = await getScripts();
@@ -43,17 +52,29 @@ async function render() {
     matches.className = 'matches';
     matches.textContent = script.matches.join(', ');
     info.append(name, matches);
-    if (errors[script.id]) {
-      const err = document.createElement('div');
-      err.className = 'err';
-      err.textContent = errors[script.id];
-      info.append(err);
+    const entry = statuses[script.id];
+    if (entry) {
+      const state = document.createElement('div');
+      state.className = entry.ok ? 'matches' : 'err';
+      state.textContent = formatStatus(entry);
+      info.append(state);
     }
-    li.append(checkbox, info);
+
+    const run = document.createElement('button');
+    run.textContent = '▶';
+    run.title = 'Ejecutar ahora en la pestaña actual';
+    run.addEventListener('click', async () => {
+      await chrome.runtime.sendMessage({ type: 'run', tabId: await getActiveTabId(), scriptId: script.id });
+    });
+
+    li.append(checkbox, info, run);
     list.append(li);
   }
 }
 
+document.getElementById('runAll').addEventListener('click', async () => {
+  await chrome.runtime.sendMessage({ type: 'runAll', tabId: await getActiveTabId() });
+});
 document.getElementById('openOptions').addEventListener('click', () => chrome.runtime.openOptionsPage());
 chrome.storage.onChanged.addListener(render);
 checkStatus();

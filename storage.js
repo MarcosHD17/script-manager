@@ -1,6 +1,6 @@
 // Capa de acceso a chrome.storage.local compartida por background, popup y opciones.
 const SCRIPTS_KEY = 'scripts';
-const ERRORS_KEY = 'syncErrors';
+const RUN_STATUS_KEY = 'runStatus';
 
 export const DEFAULT_SCRIPTS = [
   {
@@ -28,13 +28,14 @@ export async function setScripts(scripts) {
   await chrome.storage.local.set({ [SCRIPTS_KEY]: scripts });
 }
 
-export async function getErrors() {
-  const data = await chrome.storage.local.get(ERRORS_KEY);
-  return data[ERRORS_KEY] ?? {};
+// Estado de la última ejecución por script: { [id]: { ok, time, trigger, error? } }
+export async function getRunStatus() {
+  const data = await chrome.storage.local.get(RUN_STATUS_KEY);
+  return data[RUN_STATUS_KEY] ?? {};
 }
 
-export async function setErrors(errors) {
-  await chrome.storage.local.set({ [ERRORS_KEY]: errors });
+export async function setRunStatus(status) {
+  await chrome.storage.local.set({ [RUN_STATUS_KEY]: status });
 }
 
-export const STORAGE_KEYS = { SCRIPTS_KEY, ERRORS_KEY };
+export const STORAGE_KEYS = { SCRIPTS_KEY, RUN_STATUS_KEY };

@@ -1,4 +1,4 @@
-import { getScripts, setScripts, getErrors } from './storage.js';
+import { getScripts, setScripts, getRunStatus } from './storage.js';
 
 const els = {
   items: document.getElementById('items'),
@@ -19,13 +19,13 @@ function clearEditor() {
 }
 
 async function renderList() {
-  const [scripts, errors] = await Promise.all([getScripts(), getErrors()]);
+  const [scripts, errors] = await Promise.all([getScripts(), getRunStatus()]);
   els.items.replaceChildren();
   for (const script of scripts) {
     const item = document.createElement('div');
     item.className = 'item' + (script.id === selectedId ? ' active' : '');
     const label = document.createElement('span');
-    label.textContent = (script.enabled ? '● ' : '○ ') + script.name + (errors[script.id] ? ' ⚠' : '');
+    label.textContent = (script.enabled ? '● ' : '○ ') + script.name + (errors[script.id]?.ok === false ? ' ⚠' : '');
     item.append(label);
     item.addEventListener('click', () => select(script.id));
     els.items.append(item);
@@ -76,7 +76,7 @@ try {
   await chrome.userScripts.getScripts();
 } catch {
   els.warning.hidden = false;
-  els.warning.textContent = 'Activa "Permitir scripts de usuario" en chrome://extensions > Detalles de esta extensión.';
+  els.warning.textContent = 'Activa "Permitir scripts de usuario" en chrome://extensions > Detalles de esta extensión (requiere Chrome 135+).';
 }
 clearEditor();
 renderList();
