@@ -10,8 +10,8 @@ async function isUserScriptsAvailable() {
 }
 
 // Sincroniza los scripts habilitados con la API userScripts (reemplazo total, idempotente).
-async function syncScripts() {
-  if (!(await isUserScriptsAvailable())) return;
+async function doSync() {
+  if (!(await isUserScriptsAvailable())) return { available: false, registered: 0 };
 
   const scripts = await getScripts();
   const registered = await chrome.userScripts.getScripts();
@@ -35,6 +35,15 @@ async function syncScripts() {
     }
   }
   await setErrors(errors);
+  return { available: true, registered: (await chrome.userScripts.getScripts()).length };
+}
+
+// Cola serial: evita condiciones de carrera ("Duplicate script ID") entre sincronizaciones concurrentes.
+let syncQueue = Promise.resolve();
+function syncScripts() {
+  const run = syncQueue.then(doSync);
+  syncQueue = run.catch((error) => console.error('Error de sincronización:', error));
+  return run;
 }
 
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
@@ -46,7 +55,17 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
 
 chrome.runtime.onStartup.addListener(syncScripts);
 
-// Re-sincroniza ante cualquier cambio de la lista (popup u opciones).
+// Re-sincroniza ante cambios de la lista (popup u opciones).
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes[STORAGE_KEYS.SCRIPTS_KEY]) syncScripts();
 });
+
+// Permite forzar la sincronización desde la UI (p. ej. tras activar "Permitir scripts de usuario").
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type !== 'sync') return false;
+  syncScripts().then(sendResponse, (error) => sendResponse({ available: false, registered: 0, error: error.message }));
+  return true;
+});
+
+// Sincroniza en cada arranque del service worker.
+syncScripts();

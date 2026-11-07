@@ -3,12 +3,15 @@ import { getScripts, setScripts, getErrors } from './storage.js';
 const list = document.getElementById('list');
 const warning = document.getElementById('warning');
 
-async function checkAvailability() {
-  try {
-    await chrome.userScripts.getScripts();
-  } catch {
-    warning.hidden = false;
+// Fuerza sincronización y muestra el estado real de registro.
+async function checkStatus() {
+  const status = await chrome.runtime.sendMessage({ type: 'sync' });
+  warning.hidden = false;
+  if (!status?.available) {
     warning.textContent = 'Activa "Permitir scripts de usuario" en chrome://extensions > Detalles de esta extensión (o el modo desarrollador en Chrome < 138).';
+  } else {
+    warning.className = 'ok';
+    warning.textContent = `Scripts registrados: ${status.registered}. Recarga la pestaña para aplicarlos.`;
   }
 }
 
@@ -53,5 +56,5 @@ async function render() {
 
 document.getElementById('openOptions').addEventListener('click', () => chrome.runtime.openOptionsPage());
 chrome.storage.onChanged.addListener(render);
-checkAvailability();
+checkStatus();
 render();
