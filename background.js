@@ -1,5 +1,9 @@
-import { getScripts, setScripts, getRunStatus, setRunStatus, getSettings, DEFAULT_SCRIPTS } from './storage.js';
+import { getScripts, setScripts, getRunStatus, setRunStatus, getSettings, getGMValues, DEFAULT_SCRIPTS } from './storage.js';
 import { bootstrap } from './runtime.js';
+import { createGM, GM_NAMES } from './gm-client.js';
+import { registerGMHost } from './gm-host.js';
+
+registerGMHost(); // listener de mensajes GM_* (registro síncrono al arrancar)
 
 // Comprueba que la API userScripts esté disponible y el permiso de usuario activado.
 async function isAvailable() {
@@ -45,13 +49,34 @@ function saveStatus(id, entry) {
   return statusQueue;
 }
 
-// Ejecuta en el mundo USER_SCRIPT (evita la CSP de la página). Cada script se envuelve en una función
-// con su propio ScriptManager, lo que además evita colisiones de variables entre scripts.
+// El mundo USER_SCRIPT necesita messaging para hablar con el background (API GM_*).
+let worldReady = false;
+async function ensureWorld() {
+  if (worldReady) return;
+  await chrome.userScripts.configureWorld({ messaging: true });
+  worldReady = true;
+}
+
+// Ejecuta en el mundo USER_SCRIPT (evita la CSP de la página). Cada script se envuelve en una función con su
+// propio ScriptManager y las funciones GM_* concedidas (las no concedidas quedan undefined, como en Tampermonkey).
 async function executeWithUserScripts(tabId, script, config) {
+  const grants = script.grants ?? [];
+  const gmContext = {
+    id: script.id,
+    name: script.name,
+    version: config.version,
+    grants,
+    values: grants.length ? ((await getGMValues())[script.id] ?? {}) : {}
+  };
+  const params = GM_NAMES.join(', ');
+  const args = GM_NAMES.map((name) => `gm.${name}`).join(', ');
+  const id = JSON.stringify(script.id);
+  const name = JSON.stringify(script.name);
   const js = [
     { code: `(${bootstrap.toString()})(${JSON.stringify(config)});` },
-    { code: `(function () {\nconst sm = globalThis.__ScriptManager;\nsm.begin(${JSON.stringify(script.id)}, ${JSON.stringify(script.name)});\ntry {\n(function (ScriptManager) {\n${script.code}\n})(sm.forScript(${JSON.stringify(script.id)}, ${JSON.stringify(script.name)}));\n} finally { sm.end(); }\n})();` }
+    { code: `(function () {\nconst sm = globalThis.__ScriptManager;\nsm.begin(${id}, ${name});\ntry {\nconst gm = (${createGM.toString()})(${JSON.stringify(gmContext)});\n(function (ScriptManager, ${params}) {\n${script.code}\n})(sm.forScript(${id}, ${name}), ${args});\n} finally { sm.end(); }\n})();` }
   ];
+  await ensureWorld();
   const results = await chrome.userScripts.execute({ target: { tabId }, world: 'USER_SCRIPT', js });
   const failed = results?.find((r) => r.error);
   if (failed) throw new Error(String(failed.error));

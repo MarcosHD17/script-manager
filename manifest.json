@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Script Manager (prueba)",
-  "version": "0.5.0",
-  "version_name": "0.5.0 - importar y exportar",
+  "version": "0.6.0",
+  "version_name": "0.6.0 - API de extensión (GM_*)",
   "description": "Base de prueba: carga y gestiona múltiples scripts por página.",
   "minimum_chrome_version": "135",
   "permissions": ["storage", "userScripts"],

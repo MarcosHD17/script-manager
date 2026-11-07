@@ -1,5 +1,13 @@
 # Registro de cambios
 
+## 0.6.0
+- feat: API de extensión compatible con Tampermonkey para los scripts: `GM_openInTab`, `GM_xmlhttpRequest` (sin CORS, vía background), `GM_setValue/getValue/deleteValue/listValues`, `GM_addStyle`, `GM_log`, `GM_info`.
+- feat: permisos por script (`@grant`) en el editor; las funciones no concedidas quedan `undefined` (los `typeof GM_openInTab` de los userscripts siguen funcionando) y el background rechaza operaciones sin permiso.
+- feat: "Leer cabecera ==UserScript==" aplica nombre, `@match`/`@include` válidos y `@grant`; descarta patrones inválidos.
+- feat: importar archivos `.js` de userscript además de JSON.
+- security: límite de 100 aperturas de pestaña por minuto y solo URLs http(s).
+- chore: `configureWorld({ messaging: true })`; nuevos módulos `gm-client.js`, `gm-host.js`, `metadata.js`.
+
 ## 0.5.0
 - feat: exportar todos los scripts o solo el seleccionado a JSON (`script-manager-AAAA-MM-DD.json`).
 - feat: importar uno o varios archivos JSON; con ids repetidos se elige reemplazar o importar como copia. Se acepta también una lista simple de scripts.

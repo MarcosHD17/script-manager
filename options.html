@@ -8,7 +8,7 @@
       <div class="item tools">
         <button id="exportAll">⬇ Exportar todos</button>
         <button id="importBtn">⬆ Importar</button>
-        <input id="importFile" type="file" accept=".json,application/json" multiple hidden>
+        <input id="importFile" type="file" accept=".json,.js,application/json" multiple hidden>
       </div>
       <div id="items"></div>
     </aside>
@@ -17,10 +17,14 @@
       <div id="message" hidden></div>
       <label>Nombre<input id="name" type="text"></label>
       <label>Patrones de URL (uno por línea, ej. https://*.example.com/*)<textarea id="matches" rows="3"></textarea></label>
+      <label>Permisos de extensión (@grant, separados por comas; <code>*</code> = todos)
+        <input id="grants" type="text" placeholder="GM_openInTab, GM_xmlhttpRequest, GM_setValue, GM_getValue">
+      </label>
       <label>Código <small>(API: <code>ScriptManager.mount(elemento, { title, id })</code> agrupa componentes flotantes)</small><textarea id="code" class="code" spellcheck="false"></textarea></label>
       <label><input id="enabled" type="checkbox"> Activo</label>
       <div class="row">
         <button id="save" class="primary">Guardar</button>
+        <button id="readHeader">Leer cabecera ==UserScript==</button>
         <button id="exportOne">Exportar este</button>
         <button id="remove" class="danger">Eliminar</button>
       </div>

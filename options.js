@@ -1,5 +1,6 @@
 import { getScripts, setScripts, getRunStatus } from './storage.js';
 import { buildExport, parseImport, mergeScripts } from './transfer.js';
+import { parseMetadata } from './metadata.js';
 
 const els = {
   items: document.getElementById('items'),
@@ -7,6 +8,7 @@ const els = {
   matches: document.getElementById('matches'),
   code: document.getElementById('code'),
   enabled: document.getElementById('enabled'),
+  grants: document.getElementById('grants'),
   warning: document.getElementById('warning'),
   message: document.getElementById('message')
 };
@@ -18,6 +20,7 @@ function clearEditor() {
   els.matches.value = '<all_urls>';
   els.code.value = "console.log('Script Manager: script ejecutado en', location.href);";
   els.enabled.checked = true;
+  els.grants.value = '';
 }
 
 async function renderList() {
@@ -42,6 +45,7 @@ async function select(id) {
   els.matches.value = script.matches.join('\n');
   els.code.value = script.code;
   els.enabled.checked = script.enabled;
+  els.grants.value = (script.grants ?? []).join(', ');
   renderList();
 }
 
@@ -53,7 +57,8 @@ document.getElementById('save').addEventListener('click', async () => {
     name: els.name.value.trim() || 'Sin nombre',
     matches: els.matches.value.split('\n').map((m) => m.trim()).filter(Boolean),
     code: els.code.value,
-    enabled: els.enabled.checked
+    enabled: els.enabled.checked,
+    grants: els.grants.value.split(',').map((g) => g.trim()).filter((g) => g && g !== 'none')
   };
   if (!data.matches.length) data.matches = ['<all_urls>'];
   const existing = scripts.find((s) => s.id === selectedId);
@@ -70,6 +75,17 @@ document.getElementById('remove').addEventListener('click', async () => {
   if (!selectedId) return;
   await setScripts((await getScripts()).filter((s) => s.id !== selectedId));
   clearEditor();
+});
+
+document.getElementById('readHeader').addEventListener('click', () => {
+  const meta = parseMetadata(els.code.value);
+  if (!meta) return showMessage('No se encontró una cabecera ==UserScript== en el código.', 'alert');
+  if (meta.name) els.name.value = meta.name;
+  if (meta.matches.length) els.matches.value = meta.matches.join('\n');
+  els.grants.value = meta.grants.join(', ');
+  const notes = ['Cabecera aplicada (nombre, @match/@include y @grant)'];
+  if (meta.invalid.length) notes.push(`patrones inválidos omitidos: ${meta.invalid.join(', ')}`);
+  showMessage(`${notes.join('. ')}. Guarda para confirmar.`, meta.invalid.length ? 'alert' : 'ok');
 });
 
 function showMessage(text, kind = 'ok') {
@@ -111,9 +127,11 @@ importFile.addEventListener('change', async () => {
   const incoming = [];
   let skipped = 0;
   const errors = [];
+  const invalidPatterns = [];
   for (const file of importFile.files) {
     try {
-      const result = parseImport(await file.text());
+      const result = parseImport(await file.text(), file.name);
+      invalidPatterns.push(...result.invalid);
       incoming.push(...result.scripts);
       skipped += result.skipped;
     } catch (error) {
@@ -131,6 +149,7 @@ importFile.addEventListener('change', async () => {
   clearEditor();
   const notes = [`Importados: ${merged.added} nuevos, ${merged.replaced} reemplazados, ${merged.copied} copias`];
   if (skipped) notes.push(`${skipped} omitidos por formato inválido`);
+  if (invalidPatterns.length) notes.push(`Patrones @match inválidos omitidos: ${invalidPatterns.join(', ')}`);
   if (errors.length) notes.push(errors.join(' | '));
   showMessage(`${notes.join('. ')}. Quedan desactivados: revísalos y actívalos.`);
 });

@@ -8,6 +8,8 @@ Extensión Manifest V3 que inyecta múltiples scripts por página, activables de
 - `popup.*`: interruptor por script (varios activos a la vez), botón ▶ por script y "Ejecutar todos los activos".
 - `options.*`: CRUD de scripts (nombre, patrones de URL, código, estado), importar y exportar.
 - `transfer.js`: validación y fusión de archivos importados.
+- `metadata.js`: lectura de cabeceras ==UserScript==.
+- `gm-client.js` / `gm-host.js`: API GM_* (lado script y lado background).
 
 ## Instalación
 1. `chrome://extensions` > activar modo desarrollador > "Cargar descomprimida".
@@ -15,6 +17,14 @@ Extensión Manifest V3 que inyecta múltiples scripts por página, activables de
 
 ## Modelo de datos
 `{ id, name, matches: string[], code, enabled }`. Los patrones siguen el formato de match patterns de Chrome.
+
+## API de extensión (GM_*)
+Los scripts pueden usar funciones con privilegios de extensión si se les concede en "Permisos de extensión (@grant)" (o con `*`):
+`GM_openInTab`, `GM_xmlhttpRequest`, `GM_setValue`, `GM_getValue`, `GM_deleteValue`, `GM_listValues`, `GM_addStyle`, `GM_log` y `GM_info` (siempre disponible).
+- Las funciones no concedidas quedan `undefined`; el background valida el permiso en cada llamada.
+- `GM_getValue` es síncrono (lee una copia tomada al ejecutar); `GM_setValue` persiste en segundo plano.
+- No hay `unsafeWindow`: el script corre en un mundo aislado y no ve las variables JS de la página.
+- "Leer cabecera ==UserScript==" aplica `@name`, `@match`/`@include` válidos y `@grant`. También se pueden importar archivos `.js`.
 
 ## Importar / exportar
 En la página de opciones: "Exportar todos", "Exportar este" e "Importar" (JSON). Formato:

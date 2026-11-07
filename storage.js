@@ -2,6 +2,7 @@
 const SCRIPTS_KEY = 'scripts';
 const RUN_STATUS_KEY = 'runStatus';
 const SETTINGS_KEY = 'settings';
+const GM_VALUES_KEY = 'gmValues';
 
 const DEMO_PANEL_CODE = (letter, color) =>
   "const box = document.createElement('div');\n" +
@@ -32,6 +33,16 @@ export async function getRunStatus() {
 
 export async function setRunStatus(status) {
   await chrome.storage.local.set({ [RUN_STATUS_KEY]: status });
+}
+
+// Valores persistentes de GM_setValue/GM_getValue: { [scriptId]: { [clave]: valor } }
+export async function getGMValues() {
+  const data = await chrome.storage.local.get(GM_VALUES_KEY);
+  return data[GM_VALUES_KEY] ?? {};
+}
+
+export async function setGMValues(values) {
+  await chrome.storage.local.set({ [GM_VALUES_KEY]: values });
 }
 
 // Ajustes globales: dock = agrupar flotantes en una lista (2+); auto = detectar flotantes sin usar mount().
