@@ -1,5 +1,11 @@
 # Registro de cambios
 
+## 0.6.1
+- feat: pegar un userscript completo en el editor aplica la cabecera (nombre, `@match`/`@include`, `@grant`) y, si el script es nuevo, lo guarda y lo deja activo sin más pasos.
+- fix: se corrige automáticamente el patrón con esquema duplicado `*://*://*` → `*://*/*` (antes se descartaba y el script no corría en el segundo sitio); se informa de cada corrección.
+- feat: aviso explícito si la cabecera no deja ningún patrón válido (el script no se guarda solo).
+- feat: confirmación visible al guardar.
+
 ## 0.6.0
 - feat: API de extensión compatible con Tampermonkey para los scripts: `GM_openInTab`, `GM_xmlhttpRequest` (sin CORS, vía background), `GM_setValue/getValue/deleteValue/listValues`, `GM_addStyle`, `GM_log`, `GM_info`.
 - feat: permisos por script (`@grant`) en el editor; las funciones no concedidas quedan `undefined` (los `typeof GM_openInTab` de los userscripts siguen funcionando) y el background rechaza operaciones sin permiso.

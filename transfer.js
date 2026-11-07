@@ -26,18 +26,19 @@ function fromUserScript(text, fileName) {
       code: text,
       enabled: false
     },
-    invalid: meta?.invalid ?? []
+    invalid: meta?.invalid ?? [],
+    repaired: meta?.repaired ?? []
   };
 }
 
 // Valida y normaliza el contenido de un archivo. Los scripts importados quedan desactivados por seguridad.
-// Devuelve { scripts, skipped, invalid } (invalid = patrones de la cabecera descartados).
+// Devuelve { scripts, skipped, invalid, repaired } (patrones de la cabecera descartados / corregidos).
 export function parseImport(text, fileName = '') {
   const trimmed = text.trim();
   if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
     if (trimmed.includes('==UserScript==') || /\.js$/i.test(fileName)) {
-      const { script, invalid } = fromUserScript(text, fileName);
-      return { scripts: [script], skipped: 0, invalid };
+      const { script, invalid, repaired } = fromUserScript(text, fileName);
+      return { scripts: [script], skipped: 0, invalid, repaired };
     }
     throw new Error('El archivo no es un JSON válido ni un userscript');
   }
@@ -65,7 +66,7 @@ export function parseImport(text, fileName = '') {
       enabled: false
     });
   }
-  return { scripts, skipped, invalid: [] };
+  return { scripts, skipped, invalid: [], repaired: [] };
 }
 
 // Fusiona los scripts importados. Con id repetido: reemplaza (replace=true) o conserva ambos como copia.

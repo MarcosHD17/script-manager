@@ -3,11 +3,20 @@ const MATCH_RE = /^(\*|https?|file|ftp):\/\/(\*|\*\.[^/*]+|[^/*]+)\/.*$/;
 
 export const isValidMatchPattern = (pattern) => pattern === '<all_urls>' || MATCH_RE.test(pattern);
 
-// Devuelve null si no hay cabecera; si la hay: { name, version, description, matches, grants, invalid }.
+// Repara el error común de esquema duplicado ("*://*://*" -> "*://*/*"). Devuelve null si no tiene arreglo.
+export function repairPattern(pattern) {
+  const parts = pattern.split('://');
+  if (parts.length !== 3) return null;
+  const rest = parts[2];
+  const repaired = `${parts[0]}://${rest.includes('/') ? rest : `${rest}/*`}`;
+  return isValidMatchPattern(repaired) ? repaired : null;
+}
+
+// Devuelve null si no hay cabecera; si la hay: { name, version, description, matches, grants, invalid, repaired }.
 export function parseMetadata(code) {
   const block = code.match(/\/\/\s*==UserScript==([\s\S]*?)\/\/\s*==\/UserScript==/);
   if (!block) return null;
-  const meta = { name: '', version: '', description: '', matches: [], grants: [], invalid: [] };
+  const meta = { name: '', version: '', description: '', matches: [], grants: [], invalid: [], repaired: [] };
   for (const line of block[1].split('\n')) {
     const entry = line.match(/^\s*\/\/\s*@([\w-]+)\s+(.+?)\s*$/);
     if (!entry) continue;
@@ -17,7 +26,13 @@ export function parseMetadata(code) {
     else if (key === 'description') meta.description = value;
     else if (key === 'grant' && value !== 'none') meta.grants.push(value);
     else if (key === 'match' || key === 'include') {
-      (isValidMatchPattern(value) ? meta.matches : meta.invalid).push(value);
+      if (isValidMatchPattern(value)) {
+        meta.matches.push(value);
+      } else {
+        const fixed = repairPattern(value);
+        if (fixed) { meta.matches.push(fixed); meta.repaired.push(`${value} → ${fixed}`); }
+        else meta.invalid.push(value);
+      }
     }
   }
   meta.matches = [...new Set(meta.matches)];

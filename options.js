@@ -51,7 +51,7 @@ async function select(id) {
 
 document.getElementById('newScript').addEventListener('click', () => { clearEditor(); renderList(); });
 
-document.getElementById('save').addEventListener('click', async () => {
+async function saveScript() {
   const scripts = await getScripts();
   const data = {
     name: els.name.value.trim() || 'Sin nombre',
@@ -69,6 +69,12 @@ document.getElementById('save').addEventListener('click', async () => {
     scripts.push({ id: selectedId, ...data });
   }
   await setScripts(scripts);
+  return data;
+}
+
+document.getElementById('save').addEventListener('click', async () => {
+  await saveScript();
+  showMessage('Guardado. Recarga las pestañas abiertas para aplicar los cambios.');
 });
 
 document.getElementById('remove').addEventListener('click', async () => {
@@ -77,16 +83,36 @@ document.getElementById('remove').addEventListener('click', async () => {
   clearEditor();
 });
 
-document.getElementById('readHeader').addEventListener('click', () => {
-  const meta = parseMetadata(els.code.value);
-  if (!meta) return showMessage('No se encontró una cabecera ==UserScript== en el código.', 'alert');
+// Aplica la cabecera ==UserScript== a los campos y devuelve un resumen legible.
+function applyHeader(meta) {
   if (meta.name) els.name.value = meta.name;
   if (meta.matches.length) els.matches.value = meta.matches.join('\n');
   els.grants.value = meta.grants.join(', ');
-  const notes = ['Cabecera aplicada (nombre, @match/@include y @grant)'];
-  if (meta.invalid.length) notes.push(`patrones inválidos omitidos: ${meta.invalid.join(', ')}`);
-  showMessage(`${notes.join('. ')}. Guarda para confirmar.`, meta.invalid.length ? 'alert' : 'ok');
+  const notes = [`Patrones: ${meta.matches.join(', ') || 'ninguno válido'}`];
+  if (meta.repaired.length) notes.push(`corregidos: ${meta.repaired.join('; ')}`);
+  if (meta.invalid.length) notes.push(`omitidos por inválidos: ${meta.invalid.join(', ')}`);
+  if (meta.grants.length) notes.push(`permisos: ${meta.grants.join(', ')}`);
+  return notes.join('. ');
+}
+
+document.getElementById('readHeader').addEventListener('click', () => {
+  const meta = parseMetadata(els.code.value);
+  if (!meta) return showMessage('No se encontró una cabecera ==UserScript== en el código.', 'alert');
+  showMessage(`Cabecera aplicada. ${applyHeader(meta)}. Guarda para confirmar.`, meta.invalid.length ? 'alert' : 'ok');
 });
+
+// Pegar un userscript completo: aplica la cabecera y, si el script es nuevo, lo guarda y lo deja activo.
+els.code.addEventListener('paste', () => setTimeout(async () => {
+  const meta = parseMetadata(els.code.value);
+  if (!meta) return;
+  const isNew = selectedId === null;
+  const summary = applyHeader(meta);
+  if (!meta.matches.length) return showMessage(`Cabecera aplicada, pero sin patrones @match válidos: añade uno y guarda. ${summary}`, 'alert');
+  if (!isNew) return showMessage(`Cabecera aplicada. ${summary}. Guarda para confirmar.`);
+  els.enabled.checked = true;
+  const saved = await saveScript();
+  showMessage(`"${saved.name}" guardado y activo. ${summary}. Recarga la pestaña donde lo quieras usar.`);
+}, 0));
 
 function showMessage(text, kind = 'ok') {
   els.message.hidden = false;
@@ -128,10 +154,12 @@ importFile.addEventListener('change', async () => {
   let skipped = 0;
   const errors = [];
   const invalidPatterns = [];
+  const repairedPatterns = [];
   for (const file of importFile.files) {
     try {
       const result = parseImport(await file.text(), file.name);
       invalidPatterns.push(...result.invalid);
+      repairedPatterns.push(...result.repaired);
       incoming.push(...result.scripts);
       skipped += result.skipped;
     } catch (error) {
@@ -149,6 +177,7 @@ importFile.addEventListener('change', async () => {
   clearEditor();
   const notes = [`Importados: ${merged.added} nuevos, ${merged.replaced} reemplazados, ${merged.copied} copias`];
   if (skipped) notes.push(`${skipped} omitidos por formato inválido`);
+  if (repairedPatterns.length) notes.push(`Patrones corregidos: ${repairedPatterns.join('; ')}`);
   if (invalidPatterns.length) notes.push(`Patrones @match inválidos omitidos: ${invalidPatterns.join(', ')}`);
   if (errors.length) notes.push(errors.join(' | '));
   showMessage(`${notes.join('. ')}. Quedan desactivados: revísalos y actívalos.`);

@@ -24,6 +24,7 @@ Los scripts pueden usar funciones con privilegios de extensión si se les conced
 - Las funciones no concedidas quedan `undefined`; el background valida el permiso en cada llamada.
 - `GM_getValue` es síncrono (lee una copia tomada al ejecutar); `GM_setValue` persiste en segundo plano.
 - No hay `unsafeWindow`: el script corre en un mundo aislado y no ve las variables JS de la página.
+- Pegar un userscript completo en el editor aplica la cabecera automáticamente y, si el script es nuevo, lo guarda activo. El patrón con esquema duplicado `*://*://*` se corrige a `*://*/*`.
 - "Leer cabecera ==UserScript==" aplica `@name`, `@match`/`@include` válidos y `@grant`. También se pueden importar archivos `.js`.
 
 ## Importar / exportar
