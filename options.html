@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Script Manager</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="item"><strong>Scripts</strong><button id="newScript" class="primary">+ Nuevo</button></div>
+      <div id="items"></div>
+    </aside>
+    <main class="editor">
+      <div id="warning" class="warn" hidden></div>
+      <label>Nombre<input id="name" type="text"></label>
+      <label>Patrones de URL (uno por línea, ej. https://*.example.com/*)<textarea id="matches" rows="3"></textarea></label>
+      <label>Código<textarea id="code" class="code" spellcheck="false"></textarea></label>
+      <label><input id="enabled" type="checkbox"> Activo</label>
+      <div class="row">
+        <button id="save" class="primary">Guardar</button>
+        <button id="remove" class="danger">Eliminar</button>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

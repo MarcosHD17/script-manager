@@ -1,0 +1,25 @@
+:root { font-family: system-ui, sans-serif; font-size: 13px; color: #202124; }
+body { margin: 0; }
+.warn { background: #fef7e0; border: 1px solid #f9ab00; padding: 8px; margin: 8px; border-radius: 6px; }
+.err { color: #d93025; font-size: 11px; }
+button { cursor: pointer; padding: 5px 10px; border: 1px solid #dadce0; border-radius: 4px; background: #fff; }
+button.primary { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+button.danger { color: #d93025; }
+/* Popup */
+.popup { width: 320px; }
+.popup header { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid #dadce0; }
+.popup ul { list-style: none; margin: 0; padding: 0; max-height: 300px; overflow: auto; }
+.popup li { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-bottom: 1px solid #f1f3f4; }
+.popup li .info { flex: 1; min-width: 0; }
+.popup li .name { font-weight: 600; }
+.popup li .matches { color: #5f6368; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.empty { padding: 12px; color: #5f6368; }
+/* Opciones */
+.layout { display: flex; height: 100vh; }
+.sidebar { width: 280px; border-right: 1px solid #dadce0; overflow: auto; }
+.sidebar .item { padding: 10px; border-bottom: 1px solid #f1f3f4; cursor: pointer; display: flex; justify-content: space-between; }
+.sidebar .item.active { background: #e8f0fe; }
+.editor { flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.editor input[type=text], .editor textarea { width: 100%; box-sizing: border-box; padding: 6px; border: 1px solid #dadce0; border-radius: 4px; font-family: inherit; }
+.editor textarea.code { flex: 1; font-family: ui-monospace, monospace; min-height: 220px; }
+.row { display: flex; gap: 8px; }

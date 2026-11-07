@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Script Manager (prueba)",
+  "version": "0.1.0",
+  "description": "Base de prueba: carga y gestiona múltiples scripts por página.",
+  "minimum_chrome_version": "120",
+  "permissions": ["storage", "userScripts"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_title": "Script Manager", "default_popup": "popup.html" },
+  "options_ui": { "page": "options.html", "open_in_tab": true }
+}
