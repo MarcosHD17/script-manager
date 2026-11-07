@@ -1,5 +1,13 @@
 # Registro de cambios
 
+## 0.13.0
+- refactor: arquitectura modular por capas (`core`, `data`, `page`, `background`, `ui`); `options.js` (≈750 líneas), `popup.js` (≈380) y `background.js` se dividen en módulos de una sola responsabilidad.
+- refactor: `organize.js` se divide en `core/organize/{sorting,groups,moves,scripts}.js` con un `index.js` de reexportación.
+- refactor: los módulos de opciones no se importan en ciclo; el enlace se hace con `hooks` (rellenados en `index.js`) y el estado compartido vive en `state.js`.
+- refactor: HTML a `pages/`, estilos a `css/` (tema, base, popup, opciones); el manifest apunta a `src/background/index.js`.
+- docs: `ARCHITECTURE.md` con capas, reglas de dependencia y guía para añadir funciones.
+- Sin cambios de comportamiento ni de formato de datos.
+
 ## 0.12.0
 - fix: la exportación incluye el historial de versiones de cada script (formato 2, campo `history`); al importar se restaura bajo el id final (reemplazo o copia). Los archivos antiguos (formato 1) se siguen importando.
 - feat: al eliminar un grupo (o varios) se pregunta si se borra solo el grupo (scripts a "Sin grupo") o el grupo con sus scripts (y su historial).

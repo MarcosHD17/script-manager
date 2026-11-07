@@ -1,0 +1,41 @@
+/* Elementos base compartidos por popup y opciones. */
+:root { font-family: system-ui, sans-serif; font-size: 13px; }
+body { margin: 0; background: var(--bg); color: var(--text); }
+button, select, input, textarea { font: inherit; color: var(--text); }
+button { cursor: pointer; padding: 5px 10px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); }
+button:hover:not(:disabled) { background: var(--surface2); }
+button:disabled { opacity: .5; cursor: default; }
+button.primary { background: var(--accent); color: var(--accentText); border-color: var(--accent); }
+button.danger { color: var(--danger); }
+button.mini { padding: 0 6px; border: 0; background: transparent; color: var(--muted); }
+button.mini:hover:not(:disabled) { color: var(--text); background: var(--surface2); }
+input[type=text], input[type=number], select, textarea { background: var(--inputBg); border: 1px solid var(--border); border-radius: 4px; padding: 5px; }
+code { background: var(--surface2); padding: 0 3px; border-radius: 3px; }
+small { color: var(--muted); }
+.warn, .alert, .ok { padding: 8px; margin: 8px; border-radius: 6px; }
+.warn { background: var(--warnBg); border: 1px solid var(--warnBorder); }
+.alert { background: var(--alertBg); border: 1px solid var(--danger); color: var(--alertText); }
+.alert button { margin-top: 6px; }
+.ok { background: var(--okBg); border: 1px solid var(--okBorder); }
+.err { color: var(--danger); font-size: .85rem; }
+.empty { padding: 12px; color: var(--muted); }
+.badge { font-size: .77rem; padding: 0 5px; border-radius: 8px; background: var(--accentSoft); color: var(--text); margin-left: 4px; }
+
+/* Piezas compartidas: asa, arrastre, interruptor, fijado y diálogos */
+.drag-ghost { position: fixed; z-index: 99999; pointer-events: none; padding: 6px 12px; background: var(--accent); color: var(--accentText); border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.35); font-weight: 600; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.is-dragging, body.is-dragging * { cursor: grabbing !important; }
+
+.switch { position: relative; display: inline-block; width: 2.4em; height: 1.4em; flex: none; }
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; inset: 0; background: var(--border); border-radius: 1.4em; transition: background .15s; cursor: pointer; }
+.slider::before { content: ''; position: absolute; width: 1.1em; height: 1.1em; left: .15em; top: .15em; background: #fff; border-radius: 50%; transition: transform .15s; }
+.switch input:checked + .slider { background: var(--accent); }
+.switch input:checked + .slider::before { transform: translateX(1em); }
+.switch input:indeterminate + .slider { background: var(--warnBorder); }
+.switch input:indeterminate + .slider::before { transform: translateX(.5em); }
+button.mini.pin { opacity: .45; }
+button.mini.pin.on { opacity: 1; }
+.group-row .ggrip { cursor: grab; }
+dialog { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 16px; max-width: 28rem; }
+dialog::backdrop { background: rgba(0,0,0,.5); }
+.dlg-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }

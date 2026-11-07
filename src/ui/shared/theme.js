@@ -1,5 +1,5 @@
 // Temas de las ventanas de la extensión (popup y opciones). El tema vive en los ajustes.
-import { getSettings, STORAGE_KEYS } from './storage.js';
+import { getSettings, STORAGE_KEYS } from '../../data/storage.js';
 
 export const THEMES = [
   { id: 'auto', label: 'Automático (sistema)' },

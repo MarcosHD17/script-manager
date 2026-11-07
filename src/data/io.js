@@ -1,8 +1,8 @@
 // Importar y exportar compartido por el popup y la página de opciones.
 import { getScripts, setScripts, getGroups, setGroups, getHistory, setHistory } from './storage.js';
-import { buildExport, parseImport, mergeScripts } from './transfer.js';
-import { assignGroupsByName } from './organize.js';
-import { ensureVersions, MAX_VERSIONS } from './versions.js';
+import { buildExport, parseImport, mergeScripts } from '../core/transfer.js';
+import { assignGroupsByName } from '../core/organize/index.js';
+import { ensureVersions, MAX_VERSIONS } from '../core/versions.js';
 
 export const today = () => new Date().toISOString().slice(0, 10);
 export const slug = (text) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'script';

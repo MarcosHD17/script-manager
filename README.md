@@ -3,18 +3,13 @@
 Extensión Manifest V3 que inyecta múltiples scripts por página, activables de forma independiente.
 
 ## Arquitectura
-- `background.js`: al completar la carga de una pestaña ejecuta los scripts activos cuyo patrón coincida (`tabs.onUpdated` + `userScripts.execute`, mundo `USER_SCRIPT`); atiende ejecución manual (`run` / `runAll`) y guarda el estado de cada ejecución.
-- `storage.js`: acceso compartido a `chrome.storage.local` (`scripts`, `runStatus`).
-- `popup.*`: interruptor por script (varios activos a la vez), botón ▶ y ✎ por script, "Ejecutar todos los activos", "+ Nuevo" (crear script), arrastre para ordenar/agrupar e indicador de coincidencia con la pestaña actual.
-- `io.js`: importar y exportar compartido entre popup y opciones.
-- `match.js`: evaluación de match patterns (compartida por background y popup).
-- `options.*`: CRUD de scripts (nombre, patrones de URL, código, estado), importar y exportar.
-- `transfer.js`: validación y fusión de archivos importados.
-- `organize.js`: orden, grupos, movimientos y duplicado (lógica pura).
-- `versions.js`: historial de versiones y diff (lógica pura).
-- `theme.js`: temas de las ventanas.
-- `metadata.js`: lectura de cabeceras ==UserScript==.
-- `gm-client.js` / `gm-host.js`: API GM_* (lado script y lado background).
+Organizada por capas en `src/` (detalle y reglas de dependencia en `ARCHITECTURE.md`):
+- `src/core/`: lógica pura sin `chrome.*` ni DOM (`organize/`, `transfer.js`, `versions.js`, `metadata.js`, `match.js`).
+- `src/data/`: acceso a `chrome.storage.local` (`storage.js`), ejemplos (`defaults.js`) e importar/exportar (`io.js`).
+- `src/page/`: código que se inyecta en las pestañas (`runtime.js`, `gm-client.js`).
+- `src/background/`: service worker (`index.js` registra listeners; `executor.js`, `availability.js`, `status.js`, `gm-host.js`).
+- `src/ui/shared/`: DOM y temas; `src/ui/popup/` y `src/ui/options/`: una responsabilidad por archivo.
+- `pages/`: `popup.html` y `options.html`. `css/`: `theme.css`, `base.css`, `popup.css`, `options.css`.
 
 ## Instalación
 1. `chrome://extensions` > activar modo desarrollador > "Cargar descomprimida".
@@ -28,8 +23,8 @@ Extensión Manifest V3 que inyecta múltiples scripts por página, activables de
 - **Grupos:** arrastra el asa ⠿ del grupo para moverlo (Gestionar y popup). 📌 fija un grupo arriba. "Contraer todo / Desplegar todo" actúa sobre todos los grupos y "Sin grupo", que también se puede plegar. En Gestionar el panel superior queda fijo y solo la lista se desplaza.
 - **Importar / exportar desde el popup:** botones "⬇ Exportar" y "⬆ Importar" (si el selector de archivos cierra el popup en tu Chrome, usa Gestionar).
 - **Desde el popup:** "+ Nuevo" crea un script (nombre, patrón —por defecto el origen de la pestaña— y código); ✎ lo abre en Gestionar; el asa ⠿ permite ordenarlo o moverlo a otro grupo (Esc cancela). Cada fila indica si el script se cargará automáticamente en la pestaña actual (activo **y** con patrón coincidente).
-- **Ordenar arrastrando:** toma una fila (asa ⠿ o cualquier parte que no sea un control) y suéltala donde quieras; la línea azul marca el lugar. Soltarla sobre la cabecera de un grupo la agrupa; sobre otra fila, la agrupa y la ordena. Esc cancela. Si arrastras uno de varios seleccionados, se mueve toda la selección. Los botones ▲▼ siguen disponibles en modo Manual.
-- **Grupos:** "+ Grupo" crea uno (si hay scripts seleccionados, los mueve a él). Cada grupo es una tarjeta con su color (cámbialo con el círculo de color), con los scripts anidados bajo una franja del mismo color. Se pueden plegar, renombrar, eliminar y subir o bajar. El interruptor del grupo activa o desactiva toda su sección.
+- **Ordenar arrastrando:** toma una fila (asa ⠿ o cualquier parte que no sea un control) y suéltala donde quieras; la línea azul marca el lugar. Soltarla sobre la cabecera de un grupo la agrupa; sobre otra fila, la agrupa y la ordena. Esc cancela. Si arrastras uno de varios seleccionados, se mueve toda la selección. 
+- **Grupos:** "+ Grupo" crea uno (si hay scripts seleccionados, los mueve a él). Cada grupo es una tarjeta con su color (cámbialo con el círculo de color), con los scripts anidados bajo una franja del mismo color. Se pueden plegar, renombrar, eliminar, fijar, llevar al principio y arrastrar. El interruptor del grupo activa o desactiva toda su sección.
 - **Agrupar en masa:** marca scripts con la casilla de cada fila, Ctrl/Cmd+clic, Mayús+clic (rango), la casilla de una cabecera (toda la sección) o "Seleccionar todos" (solo los visibles; combínalo con el buscador). La barra superior permite moverlos a un grupo, crear un grupo nuevo con ellos, activarlos, desactivarlos, limpiar o eliminar.
 - **Orden:** selector "Ordenar" (manual, nombre, fechas, activos, con permisos). Con un orden automático, soltar en una posición cambia a Manual conservando lo que veías.
 - **Versiones:** cada guardado con cambios crea una versión (máx. 30 por script, con nota opcional). En "Historial de versiones": Comparar con el editor, Restaurar (crea una versión nueva) y borrar.

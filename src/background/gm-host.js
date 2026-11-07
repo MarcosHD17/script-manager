@@ -1,5 +1,5 @@
 // Lado background de la API GM_*: valida el permiso (@grant) de cada operación y la ejecuta.
-import { getScripts, getGMValues, setGMValues } from './storage.js';
+import { getScripts, getGMValues, setGMValues } from '../data/storage.js';
 
 const OP_GRANT = {
   openInTab: 'GM_openInTab',
