@@ -10,12 +10,12 @@ export function bootstrap(config) {
   document.getElementById('__sm-dock')?.remove();
 
   const CSS = [
-    '.dock{position:fixed;top:12px;right:12px;width:320px;max-height:calc(100vh - 24px);display:flex;flex-direction:column;background:#fff;color:#202124;border:1px solid #dadce0;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.25);font:12px system-ui,sans-serif;z-index:2147483647}',
-    '.head{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:#1a73e8;color:#fff;border-radius:8px 8px 0 0}',
+    '.dock{position:fixed;top:12px;right:12px;width:320px;max-height:calc(100vh - 24px);display:flex;flex-direction:column;background:var(--sm-surface,#fff);color:var(--sm-text,#202124);border:1px solid var(--sm-border,#dadce0);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.25);font:12px system-ui,sans-serif;z-index:2147483647}',
+    '.head{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:var(--sm-accent,#1a73e8);color:var(--sm-accent-text,#fff);border-radius:8px 8px 0 0}',
     '.list{overflow:auto;display:flex;flex-direction:column;gap:6px;padding:6px}',
     '.list[hidden]{display:none}',
-    '.card{border:1px solid #e0e0e0;border-radius:6px;overflow:hidden}',
-    '.card-head{display:flex;justify-content:space-between;align-items:center;padding:4px 6px;background:#f1f3f4;font-weight:600}',
+    '.card{border:1px solid var(--sm-border,#e0e0e0);border-radius:6px;overflow:hidden}',
+    '.card-head{display:flex;justify-content:space-between;align-items:center;padding:4px 6px;background:var(--sm-surface2,#f1f3f4);font-weight:600}',
     '.card-body{padding:6px}',
     '.card.collapsed .card-body{display:none}',
     'button{cursor:pointer;border:0;background:transparent;font-size:14px;color:inherit;padding:0 4px}'
@@ -25,13 +25,37 @@ export function bootstrap(config) {
     ['z-index', 'auto'], ['margin', '0'], ['transform', 'none'], ['max-width', '100%']
   ];
 
+  // Paletas del contenedor (las mismas que los temas de las ventanas de la extensión).
+  const PALETTES = {
+    light: { surface: '#ffffff', surface2: '#f1f3f4', text: '#202124', border: '#dadce0', accent: '#1a73e8', accentText: '#ffffff', scheme: 'light' },
+    dark: { surface: '#26262b', surface2: '#303036', text: '#e8eaed', border: '#3c4043', accent: '#8ab4f8', accentText: '#202124', scheme: 'dark' },
+    midnight: { surface: '#111a2e', surface2: '#18243d', text: '#dbe6ff', border: '#26365a', accent: '#5b9dff', accentText: '#06101f', scheme: 'dark' },
+    forest: { surface: '#17231d', surface2: '#1f3027', text: '#dcefe3', border: '#2c4538', accent: '#5fcf8a', accentText: '#06150d', scheme: 'dark' },
+    sepia: { surface: '#fbf5e6', surface2: '#eadfc4', text: '#433422', border: '#d6c8a6', accent: '#a0522d', accentText: '#ffffff', scheme: 'light' }
+  };
+
   const panels = new Map();
   const owners = new WeakMap(); // elemento -> id del script que lo creó
-  const state = { dock: config.dock, auto: config.auto };
+  const state = { dock: config.dock, auto: config.auto, theme: config.theme ?? 'auto' };
   let host = null;
   let listEl = null;
   let depth = 0; // >0 mientras el propio runtime manipula el DOM (evita auto-detectarse)
   let current = null; // script en ejecución síncrona (atribución de componentes auto-detectados)
+
+  // "auto" sigue el tema claro/oscuro del sistema.
+  function applyDockTheme() {
+    if (!host) return;
+    const prefersDark = typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
+    const name = PALETTES[state.theme] ? state.theme : (prefersDark ? 'dark' : 'light');
+    const p = PALETTES[name];
+    host.style.setProperty('--sm-surface', p.surface);
+    host.style.setProperty('--sm-surface2', p.surface2);
+    host.style.setProperty('--sm-text', p.text);
+    host.style.setProperty('--sm-border', p.border);
+    host.style.setProperty('--sm-accent', p.accent);
+    host.style.setProperty('--sm-accent-text', p.accentText);
+    host.style.setProperty('color-scheme', p.scheme);
+  }
 
   function makeButton(label, title) {
     const btn = document.createElement('button');
@@ -63,6 +87,7 @@ export function bootstrap(config) {
       // Si un script elimina su componente mientras está en el contenedor, se limpia la tarjeta.
       new MutationObserver(() => render()).observe(listEl, { childList: true, subtree: true });
     }
+    applyDockTheme();
     if (!host.isConnected) document.documentElement.appendChild(host);
   }
 
@@ -217,7 +242,7 @@ export function bootstrap(config) {
 
   g.__ScriptManager = {
     version: config.version,
-    configure(cfg) { state.dock = cfg.dock; state.auto = cfg.auto; render(); },
+    configure(cfg) { state.dock = cfg.dock; state.auto = cfg.auto; state.theme = cfg.theme ?? state.theme; render(); applyDockTheme(); },
     begin(id, name) { current = { id, name, count: 0 }; },
     end() { current = null; },
     forScript(scriptId, scriptName) {

@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 0.8.0
+- feat: el contenedor flotante de las páginas sigue el tema elegido (Claro, Oscuro, Medianoche, Bosque, Sepia); "Automático" sigue el tema del sistema. El cambio llega a una página la próxima vez que se ejecuta un script en ella.
+- chore: el ZIP de entrega incluye la versión en su nombre (`script-manager-vX.Y.Z.zip`).
+
 ## 0.7.0
 - feat: grupos con nombre (crear, renombrar, eliminar, plegar, subir/bajar); casilla maestra para activar o desactivar todo un grupo, en opciones y popup.
 - feat: orden de la lista: manual (flechas y arrastrar y soltar, también entre grupos), nombre A→Z / Z→A, modificados o creados recientemente, activos primero y con permisos de extensión primero. El orden elegido se aplica también en el popup.

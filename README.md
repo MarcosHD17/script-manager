@@ -26,7 +26,7 @@ Extensión Manifest V3 que inyecta múltiples scripts por página, activables de
 - **Orden:** selector "Ordenar". En modo Manual se usan las flechas ▲▼ o arrastrar y soltar; en los demás modos el orden es automático dentro de cada grupo.
 - **Versiones:** cada guardado con cambios crea una versión (máx. 30 por script, con nota opcional). En "Historial de versiones": Comparar con el editor, Restaurar (crea una versión nueva) y borrar.
 - **Duplicar / Copiar:** "Duplicar" crea una copia desactivada del script guardado; "Copiar" deja en el portapapeles un userscript con cabecera que se puede pegar en un script nuevo.
-- **Tema:** selector "Tema" (Automático, Claro, Oscuro, Medianoche, Bosque, Sepia); se aplica a opciones y popup.
+- **Tema:** selector "Tema" (Automático, Claro, Oscuro, Medianoche, Bosque, Sepia); se aplica a opciones, popup y al contenedor flotante de las páginas (este último se actualiza al ejecutar un script en la página).
 
 ## API de extensión (GM_*)
 Los scripts pueden usar funciones con privilegios de extensión si se les concede en "Permisos de extensión (@grant)" (o con `*`):

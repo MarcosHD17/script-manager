@@ -88,7 +88,7 @@ async function runScript(tabId, script, trigger) {
   try {
     if (!(await isAvailable())) throw new Error('Falta el permiso "Permitir scripts de usuario"');
     const settings = await getSettings();
-    await executeWithUserScripts(tabId, script, { dock: settings.dock, auto: settings.auto, version: chrome.runtime.getManifest().version });
+    await executeWithUserScripts(tabId, script, { dock: settings.dock, auto: settings.auto, theme: settings.theme, version: chrome.runtime.getManifest().version });
   } catch (error) {
     entry.ok = false;
     entry.error = error.message;
