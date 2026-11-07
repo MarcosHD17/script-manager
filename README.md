@@ -22,8 +22,10 @@ Extensión Manifest V3 que inyecta múltiples scripts por página, activables de
 `{ id, name, matches: string[], code, enabled }`. Los patrones siguen el formato de match patterns de Chrome.
 
 ## Organización, versiones y temas
-- **Grupos:** "+ Grupo" en opciones. Arrastra scripts a un grupo o elígelo en el editor. La casilla del grupo activa/desactiva todos sus scripts.
-- **Orden:** selector "Ordenar". En modo Manual se usan las flechas ▲▼ o arrastrar y soltar; en los demás modos el orden es automático dentro de cada grupo.
+- **Ordenar arrastrando:** toma una fila (asa ⠿ o cualquier parte que no sea un control) y suéltala donde quieras; la línea azul marca el lugar. Soltarla sobre la cabecera de un grupo la agrupa; sobre otra fila, la agrupa y la ordena. Esc cancela. Si arrastras uno de varios seleccionados, se mueve toda la selección. Los botones ▲▼ siguen disponibles en modo Manual.
+- **Grupos:** "+ Grupo" crea uno (si hay scripts seleccionados, los mueve a él). Cada grupo es una tarjeta con su color (cámbialo con el círculo de color), con los scripts anidados bajo una franja del mismo color. Se pueden plegar, renombrar, eliminar y subir o bajar. El interruptor del grupo activa o desactiva toda su sección.
+- **Agrupar en masa:** marca scripts con la casilla de cada fila, Ctrl/Cmd+clic, Mayús+clic (rango), la casilla de una cabecera (toda la sección) o "Seleccionar todos" (solo los visibles; combínalo con el buscador). La barra superior permite moverlos a un grupo, crear un grupo nuevo con ellos, activarlos, desactivarlos, limpiar o eliminar.
+- **Orden:** selector "Ordenar" (manual, nombre, fechas, activos, con permisos). Con un orden automático, soltar en una posición cambia a Manual conservando lo que veías.
 - **Versiones:** cada guardado con cambios crea una versión (máx. 30 por script, con nota opcional). En "Historial de versiones": Comparar con el editor, Restaurar (crea una versión nueva) y borrar.
 - **Duplicar / Copiar:** "Duplicar" crea una copia desactivada del script guardado; "Copiar" deja en el portapapeles un userscript con cabecera que se puede pegar en un script nuevo.
 - **Tema:** selector "Tema" (Automático, Claro, Oscuro, Medianoche, Bosque, Sepia); se aplica a opciones, popup y al contenedor flotante de las páginas (este último se actualiza al ejecutar un script en la página).

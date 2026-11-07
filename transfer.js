@@ -9,10 +9,13 @@ export function buildExport(scripts, groups = []) {
     format: EXPORT_FORMAT,
     formatVersion: EXPORT_FORMAT_VERSION,
     exportedAt: new Date().toISOString(),
-    scripts: scripts.map(({ id, name, matches, grants, code, enabled, group }) => ({
-      id, name, matches, grants: grants ?? [], code, enabled,
-      ...(groups.find((g) => g.id === group) ? { groupName: groups.find((g) => g.id === group).name } : {})
-    }))
+    scripts: scripts.map(({ id, name, matches, grants, code, enabled, group }) => {
+      const g = groups.find((candidate) => candidate.id === group);
+      return {
+        id, name, matches, grants: grants ?? [], code, enabled,
+        ...(g ? { groupName: g.name, ...(g.color ? { groupColor: g.color } : {}) } : {})
+      };
+    })
   };
 }
 
@@ -67,7 +70,9 @@ export function parseImport(text, fileName = '') {
       grants,
       code: item.code,
       enabled: false,
-      ...(typeof item.groupName === 'string' && item.groupName.trim() ? { groupName: item.groupName.trim() } : {})
+      ...(typeof item.groupName === 'string' && item.groupName.trim()
+        ? { groupName: item.groupName.trim(), ...(/^#[0-9a-f]{6}$/i.test(item.groupColor ?? '') ? { groupColor: item.groupColor } : {}) }
+        : {})
     });
   }
   return { scripts, skipped, invalid: [], repaired: [] };

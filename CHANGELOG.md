@@ -1,5 +1,14 @@
 # Registro de cambios
 
+## 0.9.0
+- fix: el arrastre usaba el arrastre nativo del navegador (HTML5), que no respondía; se reemplaza por un arrastre propio con eventos de puntero: asa ⠿ visible, fantasma que sigue al cursor, línea azul que marca dónde caerá, resaltado del grupo destino, desplazamiento automático de la lista y Esc para cancelar. Funciona con ratón y táctil (desde el asa).
+- feat: arrastrar uno de varios scripts seleccionados mueve toda la selección.
+- feat: con un orden automático, soltar en una posición cambia a Manual conservando lo que se veía (y lo avisa); soltar sobre un grupo funciona siempre.
+- feat: grupos más distinguibles: tarjeta con borde y cabecera del color del grupo (📁 + contador), scripts anidados con franja lateral del mismo color y "Sin grupo" en estilo neutro. Cada grupo recibe un color distinto automáticamente y se puede cambiar. También se ve en el popup.
+- feat: agrupar en masa y de forma individual: casilla de selección por fila y por sección, Ctrl/Cmd+clic, Mayús+clic para rangos, "Seleccionar todos" y buscador por nombre o patrón; barra de acciones (mover a grupo, nuevo grupo con la selección, activar, desactivar, limpiar, eliminar). "+ Grupo" con scripts seleccionados los mueve al grupo nuevo.
+- feat: interruptores de activación (fila y grupo) en lugar de casillas, para no confundirlos con la selección.
+- feat: el color del grupo viaja en la exportación y la importación.
+
 ## 0.8.0
 - feat: el contenedor flotante de las páginas sigue el tema elegido (Claro, Oscuro, Medianoche, Bosque, Sepia); "Automático" sigue el tema del sistema. El cambio llega a una página la próxima vez que se ejecuta un script en ella.
 - chore: el ZIP de entrega incluye la versión en su nombre (`script-manager-vX.Y.Z.zip`).

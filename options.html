@@ -8,17 +8,31 @@
         <strong>Scripts</strong>
         <span>
           <button id="newScript" class="primary">+ Nuevo</button>
-          <button id="newGroup">+ Grupo</button>
+          <button id="newGroup" title="Crea un grupo; si hay scripts seleccionados, los mueve a él">+ Grupo</button>
         </span>
       </div>
       <div class="side-tools">
+        <input id="search" type="search" placeholder="Buscar por nombre o patrón…">
         <label>Ordenar <select id="sortMode"></select></label>
         <label>Tema <select id="themeSelect"></select></label>
         <button id="exportAll">⬇ Exportar todos</button>
         <button id="importBtn">⬆ Importar</button>
         <input id="importFile" type="file" accept=".json,.js,application/json" multiple hidden>
       </div>
+      <div class="list-bar">
+        <label><input id="selectAll" type="checkbox"> Seleccionar todos</label>
+        <span id="selCount"></span>
+      </div>
+      <div id="bulkBar" class="bulk" hidden>
+        <strong id="bulkCount"></strong>
+        <select id="bulkGroup"></select>
+        <button id="bulkOn">Activar</button>
+        <button id="bulkOff">Desactivar</button>
+        <button id="bulkClear">Limpiar</button>
+        <button id="bulkDelete" class="danger">Eliminar</button>
+      </div>
       <div id="items"></div>
+      <div class="hint">Arrastra un script para ordenarlo o moverlo a un grupo · Ctrl/Mayús + clic para seleccionar varios · Esc limpia la selección</div>
     </aside>
     <main class="editor">
       <div id="warning" class="warn" hidden></div>

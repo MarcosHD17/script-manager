@@ -37,12 +37,13 @@ export function buildSections(scripts, groups, mode) {
   return sections;
 }
 
-// Mueve un script a un grupo y posición. where: 'before' | 'after' (respecto a targetId) | 'end' (final del grupo).
-export function moveScript(scripts, id, { targetId = null, where = 'end', groupId = null } = {}) {
-  const moving = scripts.find((s) => s.id === id);
-  if (!moving) return scripts;
-  const rest = scripts.filter((s) => s.id !== id);
-  const moved = { ...moving, group: groupId };
+// Mueve uno o varios scripts (conservando su orden relativo) a un grupo y posición.
+// where: 'before' | 'after' (respecto a targetId) | 'end' (final del grupo).
+export function moveMany(scripts, ids, { targetId = null, where = 'end', groupId = null } = {}) {
+  const set = new Set(ids);
+  const moving = scripts.filter((s) => set.has(s.id)).map((s) => ({ ...s, group: groupId }));
+  if (!moving.length) return scripts;
+  const rest = scripts.filter((s) => !set.has(s.id));
   let index;
   if (targetId && rest.some((s) => s.id === targetId)) {
     const target = rest.findIndex((s) => s.id === targetId);
@@ -51,8 +52,45 @@ export function moveScript(scripts, id, { targetId = null, where = 'end', groupI
     const inGroup = rest.map((s, i) => ((s.group ?? null) === groupId ? i : -1)).filter((i) => i >= 0);
     index = inGroup.length ? inGroup[inGroup.length - 1] + 1 : rest.length;
   }
-  rest.splice(index, 0, moved);
+  rest.splice(index, 0, ...moving);
   return rest;
+}
+
+export const moveScript = (scripts, id, options) => moveMany(scripts, [id], options);
+
+// "Congela" el orden mostrado (grupos y modo de orden) como orden manual del arreglo.
+export function bakeOrder(scripts, groups, mode) {
+  return buildSections(scripts, groups, mode).flatMap((section) => section.scripts);
+}
+
+// Ids entre dos scripts (ambos incluidos) según el orden en que se muestran.
+export function rangeIds(orderedIds, fromId, toId) {
+  const from = orderedIds.indexOf(fromId);
+  const to = orderedIds.indexOf(toId);
+  if (from < 0 || to < 0) return [];
+  return orderedIds.slice(Math.min(from, to), Math.max(from, to) + 1);
+}
+
+// Colores de grupo (se ven bien en todos los temas).
+export const GROUP_COLORS = ['#1a73e8', '#e8710a', '#188038', '#a142f4', '#d93025', '#00897b', '#c2185b', '#5f6368'];
+
+export function nextGroupColor(groups) {
+  const used = new Set(groups.map((g) => g.color));
+  return GROUP_COLORS.find((c) => !used.has(c)) ?? GROUP_COLORS[groups.length % GROUP_COLORS.length];
+}
+
+// Asigna color a los grupos que no lo tienen (determinista: opciones y popup obtienen el mismo resultado).
+export function ensureGroupColors(groups) {
+  const used = new Set(groups.map((g) => g.color).filter(Boolean));
+  let changed = false;
+  const result = groups.map((group, index) => {
+    if (group.color) return group;
+    changed = true;
+    const color = GROUP_COLORS.find((c) => !used.has(c)) ?? GROUP_COLORS[index % GROUP_COLORS.length];
+    used.add(color);
+    return { ...group, color };
+  });
+  return { groups: result, changed };
 }
 
 // Sube (-1) o baja (+1) un script dentro de su grupo.
@@ -104,11 +142,11 @@ export function duplicateScript(scripts, id, now = Date.now()) {
 // Convierte `groupName` (de archivos importados) en ids de grupo, creando los que no existan.
 export function assignGroupsByName(scripts, groups) {
   const result = [...groups];
-  const mapped = scripts.map(({ groupName, ...script }) => {
+  const mapped = scripts.map(({ groupName, groupColor, ...script }) => {
     if (!groupName) return script;
     let group = result.find((g) => g.name.toLowerCase() === groupName.toLowerCase());
     if (!group) {
-      group = { id: crypto.randomUUID(), name: groupName, collapsed: false };
+      group = { id: crypto.randomUUID(), name: groupName, collapsed: false, color: groupColor || nextGroupColor(result) };
       result.push(group);
     }
     return { ...script, group: group.id };

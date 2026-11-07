@@ -4,8 +4,8 @@ import {
 import { buildExport, parseImport, mergeScripts } from './transfer.js';
 import { parseMetadata, buildUserScript } from './metadata.js';
 import {
-  SORT_MODES, buildSections, moveScript, shiftScript, moveGroup, setEnabled, enabledState,
-  duplicateScript, assignGroupsByName
+  SORT_MODES, buildSections, moveMany, shiftScript, moveGroup, setEnabled, enabledState, duplicateScript,
+  assignGroupsByName, bakeOrder, rangeIds, ensureGroupColors, nextGroupColor
 } from './organize.js';
 import { addVersion, ensureVersions, diffLines, collapseContext, comparableText } from './versions.js';
 import { THEMES, initTheme, applyTheme } from './theme.js';
@@ -15,10 +15,11 @@ const els = {
   items: $('items'), name: $('name'), group: $('group'), matches: $('matches'), code: $('code'), enabled: $('enabled'),
   grants: $('grants'), note: $('note'), warning: $('warning'), message: $('message'), sort: $('sortMode'),
   theme: $('themeSelect'), historyList: $('historyList'), historyCount: $('historyCount'), diffView: $('diffView'),
-  importFile: $('importFile')
+  importFile: $('importFile'), search: $('search'), selectAll: $('selectAll'), selCount: $('selCount'),
+  bulkBar: $('bulkBar'), bulkCount: $('bulkCount'), bulkGroup: $('bulkGroup'), bulkOn: $('bulkOn'), bulkOff: $('bulkOff'),
+  bulkClear: $('bulkClear'), bulkDelete: $('bulkDelete')
 };
 let selectedId = null;
-let dragId = null;
 
 function h(tag, props = {}, ...children) {
   const node = document.createElement(tag);
@@ -111,29 +112,70 @@ async function saveScript({ note = els.note.value.trim() } = {}) {
   return script;
 }
 
-// ---------- Lista: grupos, orden y arrastrar y soltar ----------
-async function dropOn({ targetId = null, where = 'end', groupId = null }) {
-  if (!dragId || dragId === targetId) return;
-  await setScripts(moveScript(await getScripts(), dragId, { targetId, where, groupId }));
+// ---------- Lista: grupos, selección, orden y arrastre ----------
+const selected = new Set(); // ids seleccionados para acciones en masa
+let lastClickedId = null;
+let visibleIds = []; // ids visibles en el orden en que se muestran (para Mayús + clic)
+let drag = null;
+let suppressClick = false;
+const DRAG_THRESHOLD = 5;
+
+const itemsOf = (ids) => [...els.items.querySelectorAll('.item')].filter((row) => ids.includes(row.dataset.id));
+
+function switchControl(checked, title, onChange) {
+  const input = h('input', { type: 'checkbox', checked, title });
+  input.addEventListener('click', (e) => e.stopPropagation());
+  input.addEventListener('change', () => onChange(input.checked));
+  return { input, node: h('label', { class: 'switch', title, onclick: (e) => e.stopPropagation() }, input, h('span', { class: 'slider' })) };
 }
 
-function groupHeader(section, scripts, groups) {
-  const group = section.group;
-  const state = enabledState(section.scripts);
-  const master = h('input', { type: 'checkbox', checked: state === 'all', title: 'Activar o desactivar todos los de esta sección' });
-  master.indeterminate = state === 'some';
-  master.addEventListener('change', async () => {
-    await setScripts(setEnabled(await getScripts(), section.scripts.map((s) => s.id), master.checked));
+async function createGroup(name) {
+  const groups = await getGroups();
+  const group = { id: crypto.randomUUID(), name, collapsed: false, color: nextGroupColor(groups) };
+  await setGroups([...groups, group]);
+  await refreshGroupOptions();
+  return group;
+}
+
+async function moveSelectionTo(groupId, label) {
+  const ids = [...selected];
+  if (!ids.length) return;
+  await setScripts(moveMany(await getScripts(), ids, { groupId }));
+  if (selectedId && ids.includes(selectedId)) await refreshGroupOptions().then(() => { els.group.value = groupId ?? ''; });
+  showMessage(`${ids.length} script(s) movido(s) a ${label}.`);
+}
+
+function groupHeader(section, groups) {
+  const { group, scripts: shown } = section;
+  const ids = shown.map((s) => s.id);
+  const selectedCount = ids.filter((id) => selected.has(id)).length;
+  const pick = h('input', { type: 'checkbox', checked: ids.length > 0 && selectedCount === ids.length, title: 'Seleccionar los scripts de esta sección' });
+  pick.indeterminate = selectedCount > 0 && selectedCount < ids.length;
+  pick.addEventListener('change', () => {
+    ids.forEach((id) => (pick.checked ? selected.add(id) : selected.delete(id)));
+    renderList();
   });
-  const arrow = h('button', { class: 'mini', textContent: group?.collapsed ? '▸' : '▾', title: 'Plegar o desplegar' });
+  const master = switchControl(enabledState(shown) === 'all', 'Activar o desactivar todos los de esta sección', async (value) => {
+    await setScripts(setEnabled(await getScripts(), ids, value));
+  });
+  master.input.indeterminate = enabledState(shown) === 'some';
+
   const toggle = async () => {
     if (!group) return;
     await setGroups((await getGroups()).map((g) => (g.id === group.id ? { ...g, collapsed: !g.collapsed } : g)));
   };
-  arrow.addEventListener('click', toggle);
-  const row = h('div', { class: 'group-row' }, master, arrow,
-    h('span', { class: 'gname', textContent: group ? group.name : 'Sin grupo', onclick: toggle }),
-    h('span', { class: 'count', textContent: String(section.scripts.length) }));
+  const row = h('div', { class: 'group-row' }, pick);
+  row.dataset.groupId = group?.id ?? '';
+  if (group) {
+    const color = h('input', { type: 'color', class: 'gcolor', value: group.color, title: 'Color del grupo' });
+    color.addEventListener('click', (e) => e.stopPropagation());
+    color.addEventListener('change', async () => {
+      await setGroups((await getGroups()).map((g) => (g.id === group.id ? { ...g, color: color.value } : g)));
+    });
+    row.append(h('button', { class: 'mini', textContent: group.collapsed ? '▸' : '▾', title: 'Plegar o desplegar', onclick: toggle }), color);
+  }
+  row.append(h('span', { class: 'gname', textContent: group ? `📁 ${group.name}` : 'Sin grupo', onclick: toggle }),
+    h('span', { class: 'count', textContent: String(shown.length) }));
   if (group) {
     const index = groups.findIndex((g) => g.id === group.id);
     row.append(
@@ -143,23 +185,30 @@ function groupHeader(section, scripts, groups) {
       h('button', { class: 'mini', textContent: '🗑', title: 'Eliminar grupo', onclick: () => deleteGroup(group) })
     );
   }
-  row.addEventListener('dragover', (e) => { if (dragId) { e.preventDefault(); row.classList.add('drop-into'); } });
-  row.addEventListener('dragleave', () => row.classList.remove('drop-into'));
-  row.addEventListener('drop', async (e) => {
-    e.preventDefault();
-    row.classList.remove('drop-into');
-    await dropOn({ groupId: group?.id ?? null });
-  });
+  row.append(master.node);
   return row;
+}
+
+function rangeSelect(toId) {
+  rangeIds(visibleIds, lastClickedId, toId).forEach((id) => selected.add(id));
+  renderList();
 }
 
 function scriptRow(script, statuses, manual) {
   const failed = statuses[script.id]?.ok === false;
-  const checkbox = h('input', { type: 'checkbox', checked: script.enabled, title: 'Activo' });
-  checkbox.addEventListener('click', (e) => e.stopPropagation());
-  checkbox.addEventListener('change', async () => setScripts(setEnabled(await getScripts(), [script.id], checkbox.checked)));
-  const label = h('span', { class: 'label', textContent: script.name + (failed ? ' ⚠' : '') });
-  const row = h('div', { class: 'item' + (script.id === selectedId ? ' active' : ''), draggable: true }, checkbox, label);
+  const pick = h('input', { type: 'checkbox', class: 'sel', checked: selected.has(script.id), title: 'Seleccionar (Mayús: rango)' });
+  pick.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (e.shiftKey && lastClickedId) { e.preventDefault(); rangeSelect(script.id); return; }
+    if (pick.checked) selected.add(script.id); else selected.delete(script.id);
+    lastClickedId = script.id;
+    renderList();
+  });
+  const row = h('div', { class: 'item' + (script.id === selectedId ? ' active' : '') + (selected.has(script.id) ? ' selected' : '') },
+    h('span', { class: 'grip', textContent: '⠿', title: 'Arrastra para ordenar o mover de grupo' }), pick,
+    h('span', { class: 'label', textContent: script.name + (failed ? ' ⚠' : '') }));
+  row.dataset.id = script.id;
+  row.dataset.group = script.group ?? '';
   if (script.rev) row.append(h('span', { class: 'badge', textContent: `v${script.rev}`, title: 'Versión' }));
   if (script.grants?.length) row.append(h('span', { class: 'badge', textContent: 'GM', title: script.grants.join(', ') }));
   if (manual) {
@@ -169,37 +218,117 @@ function scriptRow(script, statuses, manual) {
       row.append(button);
     }
   }
-  row.addEventListener('click', () => select(script.id));
-  row.addEventListener('dragstart', (e) => { dragId = script.id; e.dataTransfer?.setData('text/plain', script.id); });
-  row.addEventListener('dragend', () => { dragId = null; });
-  row.addEventListener('dragover', (e) => {
-    if (!dragId) return;
-    e.preventDefault();
-    const after = e.offsetY > row.offsetHeight / 2;
-    row.classList.toggle('drop-before', !after);
-    row.classList.toggle('drop-after', after);
+  row.append(switchControl(script.enabled, 'Activo', async (value) => {
+    await setScripts(setEnabled(await getScripts(), [script.id], value));
+  }).node);
+
+  row.addEventListener('click', (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      if (selected.has(script.id)) selected.delete(script.id); else selected.add(script.id);
+      lastClickedId = script.id;
+      return renderList();
+    }
+    if (e.shiftKey && lastClickedId) return rangeSelect(script.id);
+    lastClickedId = script.id;
+    select(script.id);
   });
-  row.addEventListener('dragleave', () => row.classList.remove('drop-before', 'drop-after'));
-  row.addEventListener('drop', async (e) => {
-    e.preventDefault();
-    const where = row.classList.contains('drop-after') ? 'after' : 'before';
-    row.classList.remove('drop-before', 'drop-after');
-    await dropOn({ targetId: script.id, where, groupId: script.group ?? null });
+  row.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || e.target.closest('input, button, .switch')) return;
+    if (e.pointerType === 'touch' && !e.target.closest('.grip')) return; // en táctil solo desde el asa
+    drag = { id: script.id, name: script.name, startX: e.clientX, startY: e.clientY, active: false, drop: null, ids: [] };
   });
   return row;
 }
 
 async function renderList() {
-  const [scripts, groups, statuses, settings] = await Promise.all([getScripts(), getGroups(), getRunStatus(), getSettings()]);
-  const sections = buildSections(scripts, groups, settings.sort);
+  const [scripts, storedGroups, statuses, settings] = await Promise.all([getScripts(), getGroups(), getRunStatus(), getSettings()]);
+  const groups = ensureGroupColors(storedGroups).groups;
+  const query = els.search.value.trim().toLowerCase();
+  const matches = (s) => !query || s.name.toLowerCase().includes(query) || s.matches.join(' ').toLowerCase().includes(query);
+  const manual = settings.sort === 'manual';
+  const sections = buildSections(scripts, groups, settings.sort).map((s) => ({ ...s, scripts: s.scripts.filter(matches) }));
+
   els.items.replaceChildren();
+  visibleIds = [];
   for (const section of sections) {
-    if (groups.length) els.items.append(groupHeader(section, scripts, groups));
+    if (query && section.scripts.length === 0) continue;
+    const container = groups.length ? h('div', { class: 'section' + (section.group ? '' : ' none') }) : els.items;
+    if (groups.length) {
+      if (section.group) container.style.setProperty('--gcolor', section.group.color);
+      container.append(groupHeader(section, groups));
+      els.items.append(container);
+    }
     if (section.group?.collapsed) continue;
-    section.scripts.forEach((script) => els.items.append(scriptRow(script, statuses, settings.sort === 'manual')));
+    for (const script of section.scripts) {
+      container.append(scriptRow(script, statuses, manual));
+      visibleIds.push(script.id);
+    }
   }
   if (!scripts.length) els.items.append(h('div', { class: 'empty', textContent: 'Sin scripts. Pega uno en el editor o impórtalo.' }));
+  else if (!visibleIds.length) els.items.append(h('div', { class: 'empty', textContent: 'Ningún script coincide con la búsqueda.' }));
+
+  const existing = new Set(scripts.map((s) => s.id));
+  for (const id of [...selected]) if (!existing.has(id)) selected.delete(id);
+  updateBulkBar(groups);
 }
+
+function updateBulkBar(groups) {
+  const count = selected.size;
+  els.bulkBar.hidden = count === 0;
+  els.bulkCount.textContent = `${count} seleccionado${count === 1 ? '' : 's'}`;
+  els.bulkGroup.replaceChildren(
+    h('option', { value: '', textContent: 'Mover a grupo…' }),
+    h('option', { value: '__none', textContent: '(sin grupo)' }),
+    ...groups.map((g) => h('option', { value: g.id, textContent: `📁 ${g.name}` })),
+    h('option', { value: '__new', textContent: '➕ Nuevo grupo con la selección…' })
+  );
+  const inView = visibleIds.filter((id) => selected.has(id)).length;
+  els.selectAll.checked = visibleIds.length > 0 && inView === visibleIds.length;
+  els.selectAll.indeterminate = inView > 0 && inView < visibleIds.length;
+  els.selCount.textContent = visibleIds.length ? `${visibleIds.length} visibles` : '';
+}
+
+// ----- Acciones en masa -----
+els.selectAll.addEventListener('change', () => {
+  visibleIds.forEach((id) => (els.selectAll.checked ? selected.add(id) : selected.delete(id)));
+  renderList();
+});
+els.search.addEventListener('input', renderList);
+els.bulkGroup.addEventListener('change', async () => {
+  const value = els.bulkGroup.value;
+  els.bulkGroup.value = '';
+  if (!value) return;
+  if (value === '__new') return newGroupFromSelection();
+  const groupId = value === '__none' ? null : value;
+  const group = (await getGroups()).find((g) => g.id === groupId);
+  await moveSelectionTo(groupId, group ? `"${group.name}"` : 'sin grupo');
+});
+els.bulkOn.addEventListener('click', async () => setScripts(setEnabled(await getScripts(), [...selected], true)));
+els.bulkOff.addEventListener('click', async () => setScripts(setEnabled(await getScripts(), [...selected], false)));
+els.bulkClear.addEventListener('click', () => { selected.clear(); renderList(); });
+els.bulkDelete.addEventListener('click', async () => {
+  const ids = [...selected];
+  if (!ids.length || !confirm(`¿Eliminar ${ids.length} script(s)? También se borra su historial de versiones.`)) return;
+  const history = await getHistory();
+  ids.forEach((id) => delete history[id]);
+  await setHistory(history);
+  await setScripts((await getScripts()).filter((s) => !selected.has(s.id)));
+  if (ids.includes(selectedId)) clearEditor();
+  selected.clear();
+  renderList();
+  showMessage(`${ids.length} script(s) eliminado(s).`);
+});
+
+async function newGroupFromSelection() {
+  const name = prompt('Nombre del nuevo grupo:')?.trim();
+  if (!name) return;
+  const group = await createGroup(name);
+  if (selected.size) await moveSelectionTo(group.id, `"${group.name}"`);
+  else showMessage(`Grupo "${name}" creado. Arrastra scripts hasta él o elígelo en el editor.`);
+}
+
+$('newGroup').addEventListener('click', newGroupFromSelection);
+$('newScript').addEventListener('click', () => { clearEditor(); renderList(); });
 
 async function renameGroup(group) {
   const name = prompt('Nombre del grupo:', group.name)?.trim();
@@ -215,15 +344,97 @@ async function deleteGroup(group) {
   await refreshGroupOptions();
 }
 
-$('newGroup').addEventListener('click', async () => {
-  const name = prompt('Nombre del nuevo grupo:')?.trim();
-  if (!name) return;
-  await setGroups([...(await getGroups()), { id: crypto.randomUUID(), name, collapsed: false }]);
-  await refreshGroupOptions();
-  showMessage(`Grupo "${name}" creado. Arrastra scripts hasta él o elígelo en el editor.`);
-});
+// ----- Arrastre con eventos de puntero (no depende del arrastre nativo del navegador) -----
+function clearDropMarks() {
+  els.items.querySelectorAll('.drop-before, .drop-after, .drop-into').forEach((el) => el.classList.remove('drop-before', 'drop-after', 'drop-into'));
+  els.items.classList.remove('drop-end');
+}
 
-$('newScript').addEventListener('click', () => { clearEditor(); renderList(); });
+function endDragUI() {
+  clearDropMarks();
+  document.querySelector('.drag-ghost')?.remove();
+  document.body.classList.remove('is-dragging');
+  els.items.querySelectorAll('.dragging').forEach((el) => el.classList.remove('dragging'));
+}
+
+function startDrag() {
+  drag.active = true;
+  drag.ids = selected.has(drag.id) && selected.size > 1 ? [...selected] : [drag.id];
+  itemsOf(drag.ids).forEach((row) => row.classList.add('dragging'));
+  document.body.append(h('div', { class: 'drag-ghost', textContent: drag.ids.length > 1 ? `${drag.ids.length} scripts` : drag.name }));
+  document.body.classList.add('is-dragging');
+}
+
+function updateDropTarget(e) {
+  clearDropMarks();
+  drag.drop = null;
+  const hit = document.elementFromPoint?.(e.clientX, e.clientY);
+  const target = hit?.closest?.('.item, .group-row');
+  if (target?.classList.contains('item')) {
+    if (drag.ids.includes(target.dataset.id)) return;
+    const rect = target.getBoundingClientRect();
+    const after = e.clientY >= rect.top + rect.height / 2;
+    drag.drop = { targetId: target.dataset.id, where: after ? 'after' : 'before', groupId: target.dataset.group || null };
+    target.classList.add(after ? 'drop-after' : 'drop-before');
+  } else if (target?.classList.contains('group-row')) {
+    drag.drop = { targetId: null, where: 'end', groupId: target.dataset.groupId || null };
+    target.classList.add('drop-into');
+  } else if (hit && els.items.contains(hit)) {
+    drag.drop = { targetId: null, where: 'end', groupId: null };
+    els.items.classList.add('drop-end');
+  }
+}
+
+function autoScroll(e) {
+  const sidebar = document.querySelector('.sidebar');
+  const rect = sidebar.getBoundingClientRect();
+  if (e.clientY < rect.top + 40) sidebar.scrollTop -= 14;
+  else if (e.clientY > rect.bottom - 40) sidebar.scrollTop += 14;
+}
+
+async function commitDrop({ ids, drop }) {
+  if (!drop || (drop.targetId && ids.includes(drop.targetId))) return;
+  const [scripts, groups, settings] = await Promise.all([getScripts(), getGroups(), getSettings()]);
+  let base = scripts;
+  // Soltar en una posición concreta con un orden automático: se pasa a Manual conservando lo que se veía.
+  if (settings.sort !== 'manual' && drop.targetId) {
+    base = bakeOrder(scripts, groups, settings.sort);
+    await setSettings({ ...settings, sort: 'manual' });
+    showMessage('Orden cambiado a Manual para respetar la posición donde soltaste.');
+  }
+  await setScripts(moveMany(base, ids, drop));
+  const group = groups.find((g) => g.id === drop.groupId);
+  const moved = ids.some((id) => (scripts.find((s) => s.id === id)?.group ?? null) !== drop.groupId);
+  if (moved) showMessage(`${ids.length} script(s) movido(s) a ${group ? `"${group.name}"` : 'sin grupo'}.`);
+}
+
+document.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  if (!drag.active) {
+    if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < DRAG_THRESHOLD) return;
+    startDrag();
+  }
+  const ghost = document.querySelector('.drag-ghost');
+  if (ghost) { ghost.style.left = `${e.clientX + 14}px`; ghost.style.top = `${e.clientY + 10}px`; }
+  updateDropTarget(e);
+  autoScroll(e);
+});
+document.addEventListener('pointerup', () => {
+  if (!drag) return;
+  const finished = drag;
+  drag = null;
+  if (!finished.active) return;
+  endDragUI();
+  suppressClick = true; // evita que el clic posterior al arrastre abra el script en el editor
+  setTimeout(() => { suppressClick = false; }, 80);
+  commitDrop(finished);
+});
+document.addEventListener('pointercancel', () => { drag = null; endDragUI(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (drag?.active) { drag = null; endDragUI(); } else if (selected.size) { selected.clear(); renderList(); }
+});
+els.items.addEventListener('click', (e) => { if (suppressClick) { e.stopPropagation(); e.preventDefault(); } }, true);
 
 // ---------- Historial de versiones ----------
 async function renderHistory(historyArg) {
@@ -455,6 +666,8 @@ async function start() {
     await setHistory(ensured.history);
     await setScripts(ensured.scripts);
   }
+  const colored = ensureGroupColors(await getGroups());
+  if (colored.changed) await setGroups(colored.groups);
   await refreshGroupOptions();
   clearEditor();
   renderList();

@@ -1,5 +1,5 @@
 import { getScripts, setScripts, getRunStatus, getGroups, setGroups, getSettings, setSettings } from './storage.js';
-import { buildSections, setEnabled, enabledState } from './organize.js';
+import { buildSections, setEnabled, enabledState, ensureGroupColors } from './organize.js';
 import { initTheme } from './theme.js';
 
 const list = document.getElementById('list');
@@ -56,19 +56,24 @@ function groupHeader(section) {
   });
 
   const name = document.createElement('span');
-  name.textContent = group ? group.name : 'Sin grupo';
+  name.textContent = group ? `📁 ${group.name}` : 'Sin grupo';
   const count = document.createElement('span');
   count.className = 'count';
   count.textContent = String(section.scripts.length);
 
   const li = document.createElement('li');
   li.className = 'group-head';
+  if (group) li.style.setProperty('--gcolor', group.color);
   li.append(master, toggle, name, count);
   return li;
 }
 
-function scriptItem(script, statuses) {
+function scriptItem(script, statuses, color) {
   const li = document.createElement('li');
+  if (color) {
+    li.classList.add('in-group');
+    li.style.setProperty('--gcolor', color);
+  }
 
   const checkbox = document.createElement('input');
   checkbox.type = 'checkbox';
@@ -108,7 +113,8 @@ function scriptItem(script, statuses) {
 }
 
 async function render() {
-  const [scripts, groups, statuses, settings] = await Promise.all([getScripts(), getGroups(), getRunStatus(), getSettings()]);
+  const [scripts, storedGroups, statuses, settings] = await Promise.all([getScripts(), getGroups(), getRunStatus(), getSettings()]);
+  const groups = ensureGroupColors(storedGroups).groups;
   list.replaceChildren();
   if (!scripts.length) {
     list.innerHTML = '<li class="empty">Sin scripts. Crea uno en "Gestionar".</li>';
@@ -117,7 +123,7 @@ async function render() {
   for (const section of buildSections(scripts, groups, settings.sort)) {
     if (groups.length && (section.group || section.scripts.length)) list.append(groupHeader(section));
     if (section.group?.collapsed) continue;
-    section.scripts.forEach((script) => list.append(scriptItem(script, statuses)));
+    section.scripts.forEach((script) => list.append(scriptItem(script, statuses, section.group?.color)));
   }
 }
 
