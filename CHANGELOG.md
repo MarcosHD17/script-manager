@@ -1,5 +1,9 @@
 # Registro de cambios
 
+## 0.16.0
+- fix: `GM_notification` no existía; un script que la usaba fallaba a mitad de ejecución ("corre pero no hace nada", sin notificaciones flotantes). Ahora se muestran avisos propios (esquina inferior derecha, ignorados por el dock).
+- feat: nuevas APIs `GM_setClipboard`, `GM_registerMenuCommand`, `GM_unregisterMenuCommand`, `GM_addElement`, `GM_getResourceText/URL` (stub), objeto `GM.*` (promesas) y `unsafeWindow`.
+
 ## 0.15.0
 - fix: con 2 o más scripts con componentes flotantes en la misma página, el contenedor ("Agrupar flotantes") los movía a su Shadow DOM; los scripts que comprueban su elemento con `document.getElementById` dejaban de encontrarlo, lo recreaban y se formaba un bucle infinito de mutaciones que congelaba la pestaña (solo "cargaba" uno y los demás no hacían nada). Reproducido con el userscript del usuario más un segundo script flotante.
 - fix: "Agrupar flotantes" y "Detectar flotantes automáticamente" pasan a ser opt-in (por defecto desactivados) y se desactivan una vez en instalaciones existentes (`floatingV2`); siguen disponibles como experimentales en el popup.

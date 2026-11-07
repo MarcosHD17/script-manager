@@ -64,10 +64,69 @@ export function createGM(ctx) {
       return { abort() {} };
     };
   }
+
+  // Notificaciones flotantes propias (sin permiso extra): contenedor independiente por pestaña, inmune al dock.
+  if (granted('GM_notification')) {
+    gm.GM_notification = (a, b, c, d) => {
+      const o = typeof a === 'object' && a ? { ...a } : { text: a, title: b, image: c, onclick: d };
+      let hostEl = document.getElementById('__sm-toasts');
+      if (!hostEl) {
+        hostEl = document.createElement('div');
+        hostEl.id = '__sm-toasts';
+        hostEl.setAttribute('data-sm-ignore', '');
+        hostEl.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:2147483647;display:flex;flex-direction:column;gap:8px;max-width:340px;pointer-events:none;font:13px system-ui,sans-serif';
+        (document.body || document.documentElement).appendChild(hostEl);
+      }
+      const toast = document.createElement('div');
+      toast.style.cssText = 'pointer-events:auto;background:#202124;color:#fff;padding:10px 12px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.35);cursor:pointer;white-space:pre-wrap;word-break:break-word';
+      if (o.title) { const t = document.createElement('div'); t.style.fontWeight = '600'; t.textContent = o.title; toast.appendChild(t); }
+      const body = document.createElement('div');
+      body.textContent = o.text ?? o.body ?? '';
+      toast.appendChild(body);
+      const close = () => { if (toast.isConnected) { toast.remove(); o.ondone?.(); } };
+      toast.addEventListener('click', () => { try { o.onclick?.(); } finally { close(); } });
+      hostEl.appendChild(toast);
+      setTimeout(close, o.timeout === 0 ? 0x7fffffff : (o.timeout || 5000));
+      return { remove: close };
+    };
+  }
+
+  if (granted('GM_setClipboard')) {
+    gm.GM_setClipboard = (text) => { navigator.clipboard?.writeText(String(text)).catch(() => {}); };
+  }
+  const menu = new Map();
+  if (granted('GM_registerMenuCommand')) {
+    gm.GM_registerMenuCommand = (title, fn) => { const id = menu.size + 1; menu.set(id, { title, fn }); return id; };
+  }
+  if (granted('GM_unregisterMenuCommand')) gm.GM_unregisterMenuCommand = (id) => { menu.delete(id); };
+  if (granted('GM_addElement')) {
+    gm.GM_addElement = (a, b, c) => {
+      const [parent, tag, attrs] = typeof a === 'string' ? [document.head || document.documentElement, a, b] : [a, b, c];
+      const el = document.createElement(tag);
+      Object.entries(attrs || {}).forEach(([k, v]) => (k === 'textContent' ? (el.textContent = v) : el.setAttribute(k, v)));
+      parent.appendChild(el);
+      return el;
+    };
+  }
+  if (granted('GM_getResourceText')) gm.GM_getResourceText = () => null;
+  if (granted('GM_getResourceURL')) gm.GM_getResourceURL = () => null;
+
+  // API asíncrona GM.* (promesas) derivada de las GM_* concedidas; siempre disponible junto con unsafeWindow.
+  const promised = (fn) => (...args) => new Promise((resolve) => resolve(fn(...args)));
+  gm.GM = { info: gm.GM_info };
+  for (const [key, name] of [['log', 'GM_log'], ['addStyle', 'GM_addStyle'], ['openInTab', 'GM_openInTab'], ['setValue', 'GM_setValue'],
+    ['getValue', 'GM_getValue'], ['deleteValue', 'GM_deleteValue'], ['listValues', 'GM_listValues'], ['notification', 'GM_notification'],
+    ['setClipboard', 'GM_setClipboard'], ['registerMenuCommand', 'GM_registerMenuCommand'], ['addElement', 'GM_addElement']]) {
+    if (gm[name]) gm.GM[key] = promised(gm[name]);
+  }
+  if (gm.GM_xmlhttpRequest) gm.GM.xmlHttpRequest = (d) => new Promise((resolve, reject) => gm.GM_xmlhttpRequest({ ...d, onload: resolve, onerror: reject, ontimeout: reject }));
+  gm.unsafeWindow = globalThis;
   return gm;
 }
 
 export const GM_NAMES = [
   'GM_info', 'GM_log', 'GM_addStyle', 'GM_openInTab', 'GM_setValue', 'GM_getValue',
-  'GM_deleteValue', 'GM_listValues', 'GM_xmlhttpRequest'
+  'GM_deleteValue', 'GM_listValues', 'GM_xmlhttpRequest', 'GM_notification', 'GM_setClipboard',
+  'GM_registerMenuCommand', 'GM_unregisterMenuCommand', 'GM_addElement', 'GM_getResourceText', 'GM_getResourceURL',
+  'GM', 'unsafeWindow'
 ];

@@ -39,7 +39,7 @@ Se aceptan match patterns de Chrome y formas tolerantes de userscript, que se no
 
 ## API de extensión (GM_*)
 Los scripts pueden usar funciones con privilegios de extensión si se les concede en "Permisos de extensión (@grant)" (o con `*`):
-`GM_openInTab`, `GM_xmlhttpRequest`, `GM_setValue`, `GM_getValue`, `GM_deleteValue`, `GM_listValues`, `GM_addStyle`, `GM_log` y `GM_info` (siempre disponible).
+`GM_openInTab`, `GM_xmlhttpRequest`, `GM_setValue`, `GM_getValue`, `GM_deleteValue`, `GM_listValues`, `GM_addStyle`, `GM_log`, `GM_notification`, `GM_setClipboard`, `GM_registerMenuCommand`, `GM_addElement`, `GM.*` (promesas), `GM_info` y `unsafeWindow` (siempre disponibles). Requieren `@grant` salvo `GM_info`, `GM` y `unsafeWindow`.
 - Las funciones no concedidas quedan `undefined`; el background valida el permiso en cada llamada.
 - `GM_getValue` es síncrono (lee una copia tomada al ejecutar); `GM_setValue` persiste en segundo plano.
 - No hay `unsafeWindow`: el script corre en un mundo aislado y no ve las variables JS de la página.
