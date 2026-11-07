@@ -1,5 +1,12 @@
 # Registro de cambios
 
+## 0.10.0
+- feat: el popup permite crear scripts nuevos ("+ Nuevo": nombre, patrón y código) y abrir cualquiera en Gestionar (✎, enlace `#edit=<id>`).
+- feat: el popup permite ordenar y mover scripts entre grupos arrastrando el asa ⠿ (mismo comportamiento que Gestionar; con orden automático pasa a Manual conservando lo visible).
+- feat: cada fila del popup indica si el script se cargará en la pestaña actual (activo y patrón coincidente), para diagnosticar scripts que "no cargan".
+- fix: la barra de acciones en masa y el formulario nuevo respetan el atributo `hidden` (antes la barra se veía con "0 seleccionados").
+- refactor: `matchesUrl` pasa de `background.js` a `match.js` para compartirse con el popup.
+
 ## 0.9.0
 - fix: el arrastre usaba el arrastre nativo del navegador (HTML5), que no respondía; se reemplaza por un arrastre propio con eventos de puntero: asa ⠿ visible, fantasma que sigue al cursor, línea azul que marca dónde caerá, resaltado del grupo destino, desplazamiento automático de la lista y Esc para cancelar. Funciona con ratón y táctil (desde el asa).
 - feat: arrastrar uno de varios scripts seleccionados mueve toda la selección.

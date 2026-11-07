@@ -54,6 +54,7 @@ small { color: var(--muted); }
 .side-tools input[type=search] { width: 100%; box-sizing: border-box; background: var(--inputBg); border: 1px solid var(--border); border-radius: 4px; padding: 5px; }
 .list-bar { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-bottom: 1px solid var(--border); color: var(--muted); }
 .list-bar label { display: flex; align-items: center; gap: 6px; }
+.bulk[hidden] { display: none; }
 .bulk { position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 10px; background: var(--accentSoft); border-bottom: 2px solid var(--accent); }
 .bulk select { flex: 1; min-width: 150px; }
 .hint { padding: 8px 12px; color: var(--muted); font-size: 11px; }
@@ -106,3 +107,20 @@ summary { cursor: pointer; font-weight: 600; }
 .diff .diff-add { background: var(--okBg); }
 .diff .diff-del { background: var(--alertBg); color: var(--alertText); }
 .diff .diff-skip { color: var(--muted); text-align: center; }
+
+/* Popup: crear y mover scripts */
+.popup .bar .opt { display: block; margin-top: 4px; }
+.popup .newform { padding: 8px 10px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; background: var(--surface2); }
+.popup .newform input[type=text], .popup .newform textarea { width: 100%; box-sizing: border-box; background: var(--inputBg); border: 1px solid var(--border); border-radius: 4px; padding: 5px; }
+.popup .newform textarea { min-height: 70px; font-family: ui-monospace, monospace; }
+.popup .newform .row { display: flex; gap: 6px; }
+.popup .newform .row button { flex: 1; }
+.popup li .grip { color: var(--muted); cursor: grab; touch-action: none; letter-spacing: -2px; user-select: none; }
+.popup li.dragging { opacity: .35; }
+.popup li.drop-before { box-shadow: inset 0 3px 0 var(--accent); }
+.popup li.drop-after { box-shadow: inset 0 -3px 0 var(--accent); }
+.popup li.group-head.drop-into { outline: 3px solid var(--accent); outline-offset: -3px; }
+.popup li .match-ok { color: var(--okBorder); font-size: 11px; }
+.popup li .match-no { color: var(--muted); font-size: 11px; }
+.popup li.group-head, .popup li[data-id] { user-select: none; }
+.popup .newform[hidden] { display: none; }

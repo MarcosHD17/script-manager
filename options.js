@@ -670,8 +670,11 @@ async function start() {
   if (colored.changed) await setGroups(colored.groups);
   await refreshGroupOptions();
   clearEditor();
-  renderList();
+  await renderList();
   checkAvailability();
+  // Enlaces desde el popup: #edit=<id> abre ese script; #new deja el editor listo para uno nuevo.
+  const editId = new URLSearchParams(location.hash.slice(1)).get('edit');
+  if (editId) await select(editId);
 }
 
 chrome.storage.onChanged.addListener(async () => {

@@ -3,10 +3,16 @@
 <head><meta charset="utf-8"><link rel="stylesheet" href="styles.css"></head>
 <body class="popup">
   <div id="warning" class="warn" hidden></div>
-  <header><strong id="title">Script Manager</strong><button id="openOptions">Gestionar</button></header>
+  <header><strong id="title">Script Manager</strong><span><button id="newScript" class="primary" title="Crear un script nuevo">+ Nuevo</button> <button id="openOptions">Gestionar</button></span></header>
   <div class="bar"><button id="runAll" class="primary">▶ Ejecutar todos los activos</button>
     <label class="opt"><input id="dock" type="checkbox"> Agrupar flotantes en una lista (si hay 2 o más)</label>
     <label class="opt"><input id="auto" type="checkbox"> Detectar flotantes automáticamente</label></div>
+  <form id="newForm" class="newform" hidden>
+    <input id="newName" type="text" placeholder="Nombre del script" required>
+    <input id="newMatches" type="text" placeholder="Patrón de URL (ej. https://*.example.com/*)">
+    <textarea id="newCode" spellcheck="false" placeholder="Código del script"></textarea>
+    <div class="row"><button type="submit" class="primary">Crear</button><button type="button" id="newCancel">Cancelar</button></div>
+  </form>
   <ul id="list"></ul>
   <script type="module" src="popup.js"></script>
 </body>
