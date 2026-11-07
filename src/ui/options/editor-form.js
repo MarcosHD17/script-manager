@@ -1,13 +1,17 @@
 // Lectura y escritura de los campos del formulario del editor.
+import { normalizeMatches } from '../../core/patterns.js';
 import { getGroups } from '../../data/storage.js';
 import { h } from '../shared/dom.js';
 import { els } from './dom.js';
 
 export function readEditor() {
-  const matches = els.matches.value.split('\n').map((m) => m.trim()).filter(Boolean);
+  const typed = els.matches.value.split(/[\n,]/).map((m) => m.trim()).filter(Boolean);
+  const { matches, repaired, invalid } = normalizeMatches(typed);
   return {
     name: els.name.value.trim() || 'Sin nombre',
-    matches: matches.length ? matches : ['<all_urls>'],
+    matches: typed.length ? matches : ['<all_urls>'],
+    repaired, // patrones corregidos automáticamente ("a → b")
+    invalid, // patrones sin arreglo (impiden guardar)
     code: els.code.value,
     enabled: els.enabled.checked,
     grants: els.grants.value.split(',').map((g) => g.trim()).filter((g) => g && g !== 'none'),

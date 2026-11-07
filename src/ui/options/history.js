@@ -1,6 +1,6 @@
 // Panel de historial de versiones: listar, comparar, restaurar y borrar.
 import { getScripts, setScripts, getHistory, setHistory } from '../../data/storage.js';
-import { addVersion, diffLines, collapseContext, comparableText } from '../../core/versions.js';
+import { addVersion, removeVersion, diffLines, collapseContext, comparableText } from '../../core/versions.js';
 import { h, formatDate } from '../shared/dom.js';
 import { els, showMessage } from './dom.js';
 import { state, hooks } from './state.js';
@@ -45,7 +45,7 @@ async function restoreVersion(version) {
   const script = scripts.find((s) => s.id === state.selectedId);
   if (!script) return;
   const now = Date.now();
-  Object.assign(script, { name: version.name, matches: [...version.matches], grants: [...version.grants], code: version.code, updatedAt: now });
+  Object.assign(script, { name: version.name, grants: [...version.grants], code: version.code, updatedAt: now });
   const result = addVersion(history, script, `Restaurada desde v${version.rev}`, now);
   if (result.version) script.rev = result.version.rev;
   await setHistory(result.history);
@@ -55,8 +55,14 @@ async function restoreVersion(version) {
 }
 
 async function deleteVersion(version) {
-  const history = await getHistory();
-  const list = (history[state.selectedId] ?? []).filter((v) => v.rev !== version.rev);
-  await setHistory({ ...history, [state.selectedId]: list });
-  await renderHistory();
+  const [scripts, history] = await Promise.all([getScripts(), getHistory()]);
+  // Se renumera de forma contigua para no dejar huecos ni saltarse un número en la siguiente versión.
+  const result = removeVersion(history, state.selectedId, version.rev);
+  await setHistory(result.history);
+  const script = scripts.find((s) => s.id === state.selectedId);
+  if (script && result.rev) {
+    script.rev = result.rev;
+    await setScripts(scripts);
+  }
+  await renderHistory(result.history);
 }

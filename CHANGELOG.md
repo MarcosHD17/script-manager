@@ -1,5 +1,13 @@
 # Registro de cambios
 
+## 0.14.0
+- fix: los patrones de URL se normalizan al estilo Tampermonkey (`src/core/patterns.js`): `https://claude.com*` → `https://claude.com/*`, `example.com` → `*://example.com/*`, `http*://` → `*://`, `*example.com` → `*://*.example.com/*`, esquema duplicado y puertos. Antes un patrón así quedaba inválido: el script importado se quedaba sin patrones y no se ejecutaba nunca.
+- fix: `matchesUrl` normaliza al evaluar, de modo que los scripts ya guardados con patrones sin normalizar empiezan a funcionar sin editarlos.
+- fix: al guardar en el editor (y al crear desde el popup) los patrones se normalizan, se muestran corregidos y un patrón sin arreglo impide guardar con un aviso (antes se guardaba tal cual y nunca coincidía).
+- fix: importar conserva el estado `enabled` del archivo (los `.js` de userscript quedan activos). Antes todo se importaba desactivado.
+- fix: los patrones de URL ya no forman parte de una versión: cambiarlos no crea versiones, no aparecen en la comparación y restaurar una versión no los modifica. Las diferencias de saltos de línea (CRLF/LF) tampoco crean versión.
+- fix: borrar una versión renumera el historial de forma contigua (1..N) y actualiza la versión vigente del script; la siguiente versión ya no se salta un número.
+
 ## 0.13.0
 - refactor: arquitectura modular por capas (`core`, `data`, `page`, `background`, `ui`); `options.js` (≈750 líneas), `popup.js` (≈380) y `background.js` se dividen en módulos de una sola responsabilidad.
 - refactor: `organize.js` se divide en `core/organize/{sorting,groups,moves,scripts}.js` con un `index.js` de reexportación.

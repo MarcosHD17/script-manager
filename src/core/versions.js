@@ -2,16 +2,17 @@
 // El historial vive aparte de los scripts: { [scriptId]: Version[] } con la más reciente primero.
 export const MAX_VERSIONS = 30;
 
+// Los patrones de URL NO forman parte de una versión: cambiarlos no crea versiones.
 export const snapshotOf = (script) => ({
   name: script.name,
-  matches: [...(script.matches ?? [])],
   grants: [...(script.grants ?? [])],
   code: script.code
 });
 
+const lf = (text) => String(text).replace(/\r\n/g, '\n'); // el editor normaliza los saltos de línea
+
 export const sameContent = (a, b) =>
-  a.name === b.name && a.code === b.code &&
-  JSON.stringify(a.matches ?? []) === JSON.stringify(b.matches ?? []) &&
+  a.name === b.name && lf(a.code) === lf(b.code) &&
   JSON.stringify(a.grants ?? []) === JSON.stringify(b.grants ?? []);
 
 // Añade una versión si el contenido cambió. Devuelve { history, version } (version = null si no hubo cambios).
@@ -21,6 +22,14 @@ export function addVersion(history, script, note = '', now = Date.now()) {
   if (list[0] && sameContent(list[0], snapshot)) return { history, version: null };
   const version = { rev: (list[0]?.rev ?? 0) + 1, at: now, note, ...snapshot };
   return { history: { ...history, [script.id]: [version, ...list].slice(0, MAX_VERSIONS) }, version };
+}
+
+// Elimina una versión y renumera el resto de forma contigua (1..N, la más antigua es v1).
+// Devuelve { history, rev } con la revisión vigente (la más reciente) del script.
+export function removeVersion(history, scriptId, rev) {
+  const kept = (history[scriptId] ?? []).filter((v) => v.rev !== rev);
+  const renumbered = kept.map((v, index) => ({ ...v, rev: kept.length - index }));
+  return { history: { ...history, [scriptId]: renumbered }, rev: renumbered[0]?.rev ?? 0 };
 }
 
 // Garantiza una versión vigente y marcas de tiempo para cada script (migración y importaciones).
@@ -92,4 +101,4 @@ export function collapseContext(ops, context = 3) {
 
 // Texto comparable de un script (metadatos + código) para mostrar diferencias.
 export const comparableText = (s) =>
-  [`# nombre: ${s.name}`, `# patrones: ${(s.matches ?? []).join(', ')}`, `# permisos: ${(s.grants ?? []).join(', ')}`, '', s.code].join('\n');
+  [`# nombre: ${s.name}`, `# permisos: ${(s.grants ?? []).join(', ')}`, '', s.code].join('\n');

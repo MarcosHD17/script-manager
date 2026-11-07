@@ -1,5 +1,10 @@
 // Implementación de match patterns de Chrome (esquema, host con comodín, ruta con comodín).
-export function matchesUrl(pattern, url) {
+// Acepta también las formas tolerantes de userscript (ver patterns.js), incluso si se guardaron sin normalizar.
+import { normalizePattern } from './patterns.js';
+
+export function matchesUrl(rawPattern, url) {
+  const pattern = normalizePattern(rawPattern);
+  if (!pattern) return false;
   let parsed;
   try { parsed = new URL(url); } catch { return false; }
   const proto = parsed.protocol.slice(0, -1);
@@ -13,7 +18,7 @@ export function matchesUrl(pattern, url) {
     if (host.startsWith('*.')) {
       const base = host.slice(2);
       if (parsed.hostname !== base && !parsed.hostname.endsWith('.' + base)) return false;
-    } else if (parsed.hostname !== host) {
+    } else if ((host.includes(':') ? parsed.host : parsed.hostname) !== host) {
       return false;
     }
   }

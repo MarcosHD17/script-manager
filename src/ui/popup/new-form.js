@@ -1,6 +1,8 @@
 // Formulario para crear un script nuevo desde el popup.
 import { getScripts, setScripts } from '../../data/storage.js';
+import { normalizeMatches } from '../../core/patterns.js';
 import { ctx } from './state.js';
+import { notify } from './dom.js';
 
 export function registerNewForm() {
   const newForm = document.getElementById('newForm');
@@ -16,12 +18,15 @@ export function registerNewForm() {
   document.getElementById('newCancel').addEventListener('click', () => { newForm.hidden = true; });
   newForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const matches = document.getElementById('newMatches').value.split(/[\n,]/).map((m) => m.trim()).filter(Boolean);
+    const typed = document.getElementById('newMatches').value.split(/[\n,]/).map((m) => m.trim()).filter(Boolean);
+    const { matches, repaired, invalid } = normalizeMatches(typed);
+    if (invalid.length) return notify(`Patrón de URL inválido: ${invalid.join(', ')}`, 'alert');
+    if (repaired.length) notify(`Patrones corregidos: ${repaired.join('; ')}`);
     const now = Date.now();
     const script = {
       id: crypto.randomUUID(),
       name: document.getElementById('newName').value.trim() || 'Sin nombre',
-      matches: matches.length ? matches : ['<all_urls>'],
+      matches: typed.length ? matches : ['<all_urls>'],
       code: document.getElementById('newCode').value,
       enabled: true,
       grants: [],

@@ -40,7 +40,12 @@ export async function select(id) {
 export async function saveScript({ note = els.note.value.trim() } = {}) {
   const [scripts, history] = await Promise.all([getScripts(), getHistory()]);
   const now = Date.now();
-  const fields = readEditor();
+  const { repaired, invalid, ...fields } = readEditor();
+  if (invalid.length) {
+    showMessage(`Patrón de URL inválido: ${invalid.join(', ')}. Formato: https://sitio.com/* · https://*.sitio.com/* · <all_urls>`, 'alert');
+    return null;
+  }
+  if (repaired.length) els.matches.value = fields.matches.join('\n'); // deja visibles los patrones ya normalizados
   const index = scripts.findIndex((s) => s.id === state.selectedId);
   let script;
   if (index >= 0) {
@@ -57,14 +62,16 @@ export async function saveScript({ note = els.note.value.trim() } = {}) {
   await setScripts(scripts);
   els.note.value = '';
   await renderHistory(result.history);
-  return script;
+  return { script, repaired };
 }
 
 export function registerEditorActions() {
   // ---------- Acciones del editor ----------
   $('save').addEventListener('click', async () => {
-    const script = await saveScript();
-    showMessage(`Guardado (v${script.rev}). Recarga las pestañas abiertas para aplicar los cambios.`);
+    const saved = await saveScript();
+    if (!saved) return;
+    const fixed = saved.repaired.length ? ` Patrones corregidos: ${saved.repaired.join('; ')}.` : '';
+    showMessage(`Guardado (v${saved.script.rev}).${fixed} Recarga las pestañas abiertas para aplicar los cambios.`);
   });
 
   $('duplicate').addEventListener('click', async () => {
@@ -120,6 +127,7 @@ export function registerEditorActions() {
     if (!isNew) return showMessage(`Cabecera aplicada. ${summary}. Guarda para confirmar.`);
     els.enabled.checked = true;
     const saved = await saveScript({ note: 'Pegado' });
-    showMessage(`"${saved.name}" guardado y activo. ${summary}. Recarga la pestaña donde lo quieras usar.`);
+    if (!saved) return;
+    showMessage(`"${saved.script.name}" guardado y activo. ${summary}. Recarga la pestaña donde lo quieras usar.`);
   }, 0));
 }

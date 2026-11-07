@@ -64,5 +64,5 @@ export async function importFiles(files) {
   if (repairedPatterns.length) notes.push(`Patrones corregidos: ${repairedPatterns.join('; ')}`);
   if (invalidPatterns.length) notes.push(`Patrones @match inválidos omitidos: ${invalidPatterns.join(', ')}`);
   if (errors.length) notes.push(errors.join(' | '));
-  return { ok: true, message: `${notes.join('. ')}. Quedan desactivados: revísalos y actívalos.` };
+  return { ok: true, message: `${notes.join('. ')}. Se conserva el estado activo de cada script.` };
 }

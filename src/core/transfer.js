@@ -1,5 +1,6 @@
 // Importación y exportación de scripts (JSON o userscript .js). Lógica pura, sin acceso a la UI.
 import { parseMetadata } from './metadata.js';
+import { normalizeMatches } from './patterns.js';
 
 export const EXPORT_FORMAT = 'script-manager';
 export const EXPORT_FORMAT_VERSION = 2; // 2 = incluye el historial de versiones (history) por script
@@ -34,14 +35,14 @@ function fromUserScript(text, fileName) {
       matches: meta ? meta.matches : ['<all_urls>'], // vacío = nunca se ejecuta (patrones inválidos)
       grants: meta ? meta.grants : [],
       code: text,
-      enabled: false
+      enabled: true
     },
     invalid: meta?.invalid ?? [],
     repaired: meta?.repaired ?? []
   };
 }
 
-// Valida y normaliza el contenido de un archivo. Los scripts importados quedan desactivados por seguridad.
+// Valida y normaliza el contenido de un archivo. Los scripts conservan su estado (activos si el archivo no lo indica).
 // Devuelve { scripts, skipped, invalid, repaired } (patrones de la cabecera descartados / corregidos).
 export function parseImport(text, fileName = '') {
   const trimmed = text.trim();
@@ -62,10 +63,16 @@ export function parseImport(text, fileName = '') {
   if (!Array.isArray(list)) throw new Error('Formato no reconocido: se esperaba una lista de scripts');
 
   const scripts = [];
+  const invalid = [];
+  const repaired = [];
   let skipped = 0;
   for (const item of list) {
     if (!item || typeof item.code !== 'string') { skipped++; continue; }
-    const matches = Array.isArray(item.matches) ? item.matches.filter((m) => typeof m === 'string' && m.trim()) : [];
+    const rawMatches = Array.isArray(item.matches) ? item.matches.filter((m) => typeof m === 'string' && m.trim()) : [];
+    const normalized = normalizeMatches(rawMatches);
+    invalid.push(...normalized.invalid);
+    repaired.push(...normalized.repaired);
+    const matches = normalized.matches;
     const grants = Array.isArray(item.grants) ? item.grants.filter((g) => typeof g === 'string' && g.trim()).map((g) => g.trim()) : [];
     const versions = Array.isArray(item.history)
       ? item.history
@@ -85,16 +92,16 @@ export function parseImport(text, fileName = '') {
       ...(versions.length ? { history: versions } : {}),
       id: typeof item.id === 'string' && item.id.trim() ? item.id.trim() : crypto.randomUUID(),
       name: typeof item.name === 'string' && item.name.trim() ? item.name.trim() : 'Sin nombre',
-      matches: matches.length ? matches.map((m) => m.trim()) : ['<all_urls>'],
+      matches: matches.length || rawMatches.length ? matches : ['<all_urls>'], // sin patrones en el archivo = global; todos inválidos = no se ejecuta
       grants,
       code: item.code,
-      enabled: false,
+      enabled: item.enabled !== false,
       ...(typeof item.groupName === 'string' && item.groupName.trim()
         ? { groupName: item.groupName.trim(), ...(/^#[0-9a-f]{6}$/i.test(item.groupColor ?? '') ? { groupColor: item.groupColor } : {}) }
         : {})
     });
   }
-  return { scripts, skipped, invalid: [], repaired: [] };
+  return { scripts, skipped, invalid, repaired };
 }
 
 // Fusiona los scripts importados. Con id repetido: reemplaza (replace=true) o conserva ambos como copia.

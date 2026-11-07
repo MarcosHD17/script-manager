@@ -18,6 +18,9 @@ Organizada por capas en `src/` (detalle y reglas de dependencia en `ARCHITECTURE
 ## Modelo de datos
 `{ id, name, matches: string[], code, enabled }`. Los patrones siguen el formato de match patterns de Chrome.
 
+## Patrones de URL
+Se aceptan match patterns de Chrome y formas tolerantes de userscript, que se normalizan al guardar o importar: `https://sitio.com/*`, `https://*.sitio.com/*`, `https://sitio.com*`, `sitio.com`, `http*://…`, `<all_urls>`. Varios patrones: uno por línea (o separados por comas). Un patrón sin arreglo no deja guardar. Los patrones no se versionan.
+
 ## Organización, versiones y temas
 - **Eliminar grupos:** pregunta si se borra solo el grupo o el grupo con sus scripts. **Varios grupos:** casilla de la cabecera o Ctrl+clic; la barra de grupos fija, contrae, despliega o elimina; arrastrar uno seleccionado mueve todos. **⤒** lleva un script o grupo al principio. **Letra:** selector en Gestionar.
 - **Grupos:** arrastra el asa ⠿ del grupo para moverlo (Gestionar y popup). 📌 fija un grupo arriba. "Contraer todo / Desplegar todo" actúa sobre todos los grupos y "Sin grupo", que también se puede plegar. En Gestionar el panel superior queda fijo y solo la lista se desplaza.
@@ -43,7 +46,7 @@ Los scripts pueden usar funciones con privilegios de extensión si se les conced
 ## Importar / exportar
 En la página de opciones: "Exportar todos", "Exportar este" e "Importar" (JSON). Formato:
 `{ "format": "script-manager", "formatVersion": 2, "scripts": [{ id, name, matches, grants, code, enabled, groupName?, groupColor?, history?: [{ rev, at, note, name, matches, grants, code }] }] }`. El historial de versiones viaja en la exportación (el formato 1 sin historial también se importa).
-Los scripts importados quedan desactivados; con ids repetidos se elige reemplazar o crear copia.
+Los scripts importados conservan su estado (los `.js` de userscript quedan activos); con ids repetidos se elige reemplazar o crear copia.
 
 ## API para componentes flotantes
 ```js

@@ -1,16 +1,5 @@
 // Lectura de la cabecera ==UserScript== (compatible con Tampermonkey/Greasemonkey). Lógica pura.
-const MATCH_RE = /^(\*|https?|file|ftp):\/\/(\*|\*\.[^/*]+|[^/*]+)\/.*$/;
-
-export const isValidMatchPattern = (pattern) => pattern === '<all_urls>' || MATCH_RE.test(pattern);
-
-// Repara el error común de esquema duplicado ("*://*://*" -> "*://*/*"). Devuelve null si no tiene arreglo.
-export function repairPattern(pattern) {
-  const parts = pattern.split('://');
-  if (parts.length !== 3) return null;
-  const rest = parts[2];
-  const repaired = `${parts[0]}://${rest.includes('/') ? rest : `${rest}/*`}`;
-  return isValidMatchPattern(repaired) ? repaired : null;
-}
+import { normalizeMatches } from './patterns.js';
 
 // Devuelve null si no hay cabecera; si la hay: { name, version, description, matches, grants, invalid, repaired }.
 export function parseMetadata(code) {
@@ -26,13 +15,10 @@ export function parseMetadata(code) {
     else if (key === 'description') meta.description = value;
     else if (key === 'grant' && value !== 'none') meta.grants.push(value);
     else if (key === 'match' || key === 'include') {
-      if (isValidMatchPattern(value)) {
-        meta.matches.push(value);
-      } else {
-        const fixed = repairPattern(value);
-        if (fixed) { meta.matches.push(fixed); meta.repaired.push(`${value} → ${fixed}`); }
-        else meta.invalid.push(value);
-      }
+      const result = normalizeMatches([value]);
+      meta.matches.push(...result.matches);
+      meta.repaired.push(...result.repaired);
+      meta.invalid.push(...result.invalid);
     }
   }
   meta.matches = [...new Set(meta.matches)];
