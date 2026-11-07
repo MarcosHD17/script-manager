@@ -1,5 +1,11 @@
 # Registro de cambios
 
+## 0.3.0
+- feat: API `ScriptManager.mount(elemento, { title, id })` disponible en cada script; con 2+ componentes los agrupa en un contenedor tipo lista (Shadow DOM) con plegar/cerrar por tarjeta y minimizar global. Con un solo componente se respeta su posición original.
+- feat: ajuste "Agrupar flotantes en una lista" en el popup.
+- refactor: cada script se ejecuta envuelto en una función (evita colisiones de `const` entre scripts); nuevo `runtime.js`.
+- feat: ejemplos "componente flotante A/B" (en actualizaciones se añaden desactivados).
+
 ## 0.2.2
 - refactor: se elimina el modo respaldo de 0.2.1; la extensión exige "Permitir scripts de usuario".
 - feat: alerta visible en popup y opciones con botón para abrir los ajustes de la extensión; ▶ y "Ejecutar todos" se deshabilitan sin el permiso.

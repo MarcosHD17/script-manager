@@ -1,4 +1,4 @@
-import { getScripts, setScripts, getRunStatus } from './storage.js';
+import { getScripts, setScripts, getRunStatus, getSettings, setSettings } from './storage.js';
 
 const list = document.getElementById('list');
 const warning = document.getElementById('warning');
@@ -89,4 +89,7 @@ document.getElementById('runAll').addEventListener('click', async () => {
 });
 document.getElementById('openOptions').addEventListener('click', () => chrome.runtime.openOptionsPage());
 chrome.storage.onChanged.addListener(render);
+const dockToggle = document.getElementById('dock');
+getSettings().then((settings) => { dockToggle.checked = settings.dock; });
+dockToggle.addEventListener('change', async () => setSettings({ ...(await getSettings()), dock: dockToggle.checked }));
 checkStatus().then(render);

@@ -1,4 +1,5 @@
-import { getScripts, setScripts, getRunStatus, setRunStatus, DEFAULT_SCRIPTS } from './storage.js';
+import { getScripts, setScripts, getRunStatus, setRunStatus, getSettings, DEFAULT_SCRIPTS } from './storage.js';
+import { bootstrap } from './runtime.js';
 
 // Comprueba que la API userScripts esté disponible y el permiso de usuario activado.
 async function isAvailable() {
@@ -44,9 +45,14 @@ function saveStatus(id, entry) {
   return statusQueue;
 }
 
-// Modo completo: userScripts.execute (mundo USER_SCRIPT, evita CSP de la página).
-async function executeWithUserScripts(tabId, code) {
-  const results = await chrome.userScripts.execute({ target: { tabId }, world: 'USER_SCRIPT', js: [{ code }] });
+// Ejecuta en el mundo USER_SCRIPT (evita la CSP de la página). Cada script se envuelve en una función
+// con su propio ScriptManager, lo que además evita colisiones de variables entre scripts.
+async function executeWithUserScripts(tabId, script, config) {
+  const js = [
+    { code: `(${bootstrap.toString()})(${JSON.stringify(config)});` },
+    { code: `(function (ScriptManager) {\n${script.code}\n})(globalThis.__ScriptManager.forScript(${JSON.stringify(script.id)}, ${JSON.stringify(script.name)}));` }
+  ];
+  const results = await chrome.userScripts.execute({ target: { tabId }, world: 'USER_SCRIPT', js });
   const failed = results?.find((r) => r.error);
   if (failed) throw new Error(String(failed.error));
 }
@@ -56,7 +62,8 @@ async function runScript(tabId, script, trigger) {
   const entry = { ok: true, time: Date.now(), trigger };
   try {
     if (!(await isAvailable())) throw new Error('Falta el permiso "Permitir scripts de usuario"');
-    await executeWithUserScripts(tabId, script.code);
+    const settings = await getSettings();
+    await executeWithUserScripts(tabId, script, { dock: settings.dock, version: chrome.runtime.getManifest().version });
   } catch (error) {
     entry.ok = false;
     entry.error = error.message;
@@ -93,8 +100,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return true;
 });
 
-chrome.runtime.onInstalled.addListener(async ({ reason }) => {
-  if (reason === 'install' && (await getScripts()).length === 0) await setScripts(DEFAULT_SCRIPTS);
+chrome.runtime.onInstalled.addListener(async ({ reason, previousVersion }) => {
+  const scripts = await getScripts();
+  if (reason === 'install' && scripts.length === 0) {
+    await setScripts(DEFAULT_SCRIPTS);
+  } else if (reason === 'update' && previousVersion?.localeCompare('0.3.0', undefined, { numeric: true }) < 0) {
+    // Añade los ejemplos de componentes flotantes (desactivados) sin tocar los scripts del usuario.
+    const missing = DEFAULT_SCRIPTS
+      .filter((d) => d.id.startsWith('demo-panel') && !scripts.some((s) => s.id === d.id))
+      .map((d) => ({ ...d, enabled: false }));
+    if (missing.length) await setScripts([...scripts, ...missing]);
+  }
   // Limpia registros persistentes de la v0.1 (userScripts.register) para evitar ejecuciones duplicadas.
   try {
     const registered = await chrome.userScripts.getScripts();

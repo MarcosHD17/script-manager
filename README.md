@@ -15,5 +15,16 @@ Extensión Manifest V3 que inyecta múltiples scripts por página, activables de
 ## Modelo de datos
 `{ id, name, matches: string[], code, enabled }`. Los patrones siguen el formato de match patterns de Chrome.
 
+## API para componentes flotantes
+```js
+const box = document.createElement('div');
+box.textContent = 'Mi panel';
+const handle = ScriptManager.mount(box, { title: 'Mi panel', id: 'main' });
+// handle.remove(); handle.setTitle('Otro título');
+```
+- Con 2+ componentes montados se agrupan en un contenedor tipo lista; con uno solo conserva su posición.
+- Solo se agrupan los componentes montados con `mount`; elementos flotantes creados por otros medios no se detectan.
+- Cada script corre en su propia función: sus variables no chocan con las de otros scripts.
+
 ## Versionado
 Versión en `manifest.json` (SemVer) y historial en `CHANGELOG.md`. Incrementar `version` en cada entrega; se muestra en el popup.
