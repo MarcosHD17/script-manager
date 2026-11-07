@@ -1,5 +1,8 @@
 # Registro de cambios
 
+## 0.4.1
+- fix: scripts que reutilizan el mismo id y limpian su botón anterior con `getElementById(...).remove()` se borraban entre sí antes de poder agruparse; ahora cada script solo ve los componentes creados por él (aislamiento en `getElementById`, solo en el mundo del script de usuario).
+
 ## 0.4.0
 - feat: detección automática de componentes flotantes: los elementos `position:fixed` que un script añade directamente a `<body>`/`<html>` (appendChild, append, prepend, insertBefore, insertAdjacentElement) se montan solos en el contenedor, sin usar `ScriptManager.mount`.
 - feat: ajuste "Detectar flotantes automáticamente" en el popup; exclusión por atributo `data-sm-ignore`; los overlays grandes (>60% de la ventana) se ignoran.

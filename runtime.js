@@ -26,6 +26,7 @@ export function bootstrap(config) {
   ];
 
   const panels = new Map();
+  const owners = new WeakMap(); // elemento -> id del script que lo creó
   const state = { dock: config.dock, auto: config.auto };
   let host = null;
   let listEl = null;
@@ -143,8 +144,9 @@ export function bootstrap(config) {
     render();
   }
 
-  function register(key, el, title, auto) {
+  function register(key, el, title, auto, owner) {
     remove(key); // re-ejecutar un script reemplaza su componente anterior
+    if (owner) owners.set(el, owner);
     const item = {
       key, el, title, auto,
       savedCss: el.style.cssText, savedParent: el.parentNode, docked: false, card: null
@@ -169,7 +171,7 @@ export function bootstrap(config) {
     const label = node.getAttribute('aria-label') || node.id || node.textContent.trim().slice(0, 24) || node.tagName.toLowerCase();
     const suffix = node.id || (current ? current.count++ : label);
     const key = current ? `${current.id}:auto:${suffix}` : `auto:${suffix}`;
-    register(key, node, current ? current.name : label, true);
+    register(key, node, current ? current.name : label, true, current?.id);
   }
 
   // Parches limitados a este mundo aislado: solo afectan a llamadas hechas por los scripts de usuario, no a la página.
@@ -192,6 +194,25 @@ export function bootstrap(config) {
   patch(Element.prototype, 'prepend', (a) => a);
   patch(Element.prototype, 'insertAdjacentElement',
     (a) => (['beforeend', 'afterbegin'].includes(String(a[0]).toLowerCase()) ? [a[1]] : []));
+  // Aislamiento: mientras corre un script, getElementById no devuelve componentes creados por otro script.
+  // Evita que scripts que reutilizan el mismo id (p. ej. "limpiar botón anterior") se borren entre sí.
+  const originalGetById = Document.prototype.getElementById;
+  Document.prototype.getElementById = function (id) {
+    const found = originalGetById.call(this, id);
+    if (found && current) {
+      const owner = owners.get(found);
+      if (owner && owner !== current.id) {
+        const selector = '[id="' + String(id).replace(/["\\]/g, '\\$&') + '"]';
+        for (const candidate of this.querySelectorAll(selector)) {
+          const candidateOwner = owners.get(candidate);
+          if (!candidateOwner || candidateOwner === current.id) return candidate;
+        }
+        return null;
+      }
+    }
+    return found;
+  };
+  patches.push([Document.prototype, 'getElementById', originalGetById]);
   g.__smRestore = () => patches.forEach(([proto, name, original]) => { proto[name] = original; });
 
   g.__ScriptManager = {
@@ -201,7 +222,7 @@ export function bootstrap(config) {
     end() { current = null; },
     forScript(scriptId, scriptName) {
       return {
-        mount: (el, opts = {}) => register(`${scriptId}:${opts.id ?? 'main'}`, el, opts.title ?? scriptName, false)
+        mount: (el, opts = {}) => register(`${scriptId}:${opts.id ?? 'main'}`, el, opts.title ?? scriptName, false, scriptId)
       };
     }
   };
