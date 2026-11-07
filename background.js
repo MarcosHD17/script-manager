@@ -44,17 +44,19 @@ function saveStatus(id, entry) {
   return statusQueue;
 }
 
-// Ejecuta un script en una pestaña (mundo USER_SCRIPT, evita CSP de la página).
+// Modo completo: userScripts.execute (mundo USER_SCRIPT, evita CSP de la página).
+async function executeWithUserScripts(tabId, code) {
+  const results = await chrome.userScripts.execute({ target: { tabId }, world: 'USER_SCRIPT', js: [{ code }] });
+  const failed = results?.find((r) => r.error);
+  if (failed) throw new Error(String(failed.error));
+}
+
+// Ejecuta un script en una pestaña; exige el permiso "Permitir scripts de usuario".
 async function runScript(tabId, script, trigger) {
   const entry = { ok: true, time: Date.now(), trigger };
   try {
-    const results = await chrome.userScripts.execute({
-      target: { tabId },
-      world: 'USER_SCRIPT',
-      js: [{ code: script.code }]
-    });
-    const failed = results?.find((r) => r.error);
-    if (failed) { entry.ok = false; entry.error = String(failed.error); }
+    if (!(await isAvailable())) throw new Error('Falta el permiso "Permitir scripts de usuario"');
+    await executeWithUserScripts(tabId, script.code);
   } catch (error) {
     entry.ok = false;
     entry.error = error.message;
@@ -65,7 +67,7 @@ async function runScript(tabId, script, trigger) {
 
 // Ejecución automática: al terminar de cargar una pestaña, corre los scripts activos cuyo patrón coincida.
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.status !== 'complete' || !tab.url) return;
+  if (changeInfo.status !== 'complete' || !tab.url || !(await isAvailable())) return;
   const scripts = (await getScripts()).filter(
     (s) => s.enabled && s.matches.some((pattern) => matchesUrl(pattern, tab.url))
   );

@@ -9,12 +9,23 @@ async function getActiveTabId() {
   return tab?.id;
 }
 
+let available = true;
+
+// Muestra una alerta visible con acceso directo a los ajustes si falta el permiso.
 async function checkStatus() {
   const status = await chrome.runtime.sendMessage({ type: 'status' });
-  warning.hidden = !!status?.available;
-  if (!status?.available) {
-    warning.textContent = 'Activa "Permitir scripts de usuario" en chrome://extensions > Detalles de esta extensión y requiere Chrome 135+.';
-  }
+  available = !!status?.available;
+  warning.hidden = available;
+  document.getElementById('runAll').disabled = !available;
+  if (available) return;
+  warning.className = 'alert';
+  warning.replaceChildren();
+  const text = document.createElement('div');
+  text.textContent = '⚠ Falta un permiso: activa "Permitir scripts de usuario" en los detalles de esta extensión (requiere Chrome 135+) y recarga la pestaña.';
+  const open = document.createElement('button');
+  open.textContent = 'Abrir ajustes de la extensión';
+  open.addEventListener('click', () => chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` }));
+  warning.append(text, open);
 }
 
 function formatStatus(entry) {
@@ -63,6 +74,7 @@ async function render() {
     const run = document.createElement('button');
     run.textContent = '▶';
     run.title = 'Ejecutar ahora en la pestaña actual';
+    run.disabled = !available;
     run.addEventListener('click', async () => {
       await chrome.runtime.sendMessage({ type: 'run', tabId: await getActiveTabId(), scriptId: script.id });
     });
@@ -77,5 +89,4 @@ document.getElementById('runAll').addEventListener('click', async () => {
 });
 document.getElementById('openOptions').addEventListener('click', () => chrome.runtime.openOptionsPage());
 chrome.storage.onChanged.addListener(render);
-checkStatus();
-render();
+checkStatus().then(render);

@@ -1,5 +1,15 @@
 # Registro de cambios
 
+## 0.2.2
+- refactor: se elimina el modo respaldo de 0.2.1; la extensión exige "Permitir scripts de usuario".
+- feat: alerta visible en popup y opciones con botón para abrir los ajustes de la extensión; ▶ y "Ejecutar todos" se deshabilitan sin el permiso.
+- chore: se retira el permiso `scripting`; `minimum_chrome_version` 135.
+
+## 0.2.1
+- fix: `chrome.userScripts` es `undefined` si el permiso "Permitir scripts de usuario" está desactivado (error `reading 'execute'`); ahora hay modo respaldo con `scripting.executeScript` (mundo MAIN) y detección de bloqueo por CSP.
+- feat: el estado de ejecución indica el modo (`completo` / `respaldo`).
+- chore: `minimum_chrome_version` 120; nuevo permiso `scripting`.
+
 ## 0.2.0
 - fix: la inyección automática ya no depende de `userScripts.register`; usa `tabs.onUpdated` + `userScripts.execute` con coincidencia propia de match patterns.
 - feat: botón ▶ por script y "Ejecutar todos los activos" en el popup (ejecución manual en la pestaña actual).

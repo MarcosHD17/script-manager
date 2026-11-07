@@ -10,7 +10,7 @@ Extensión Manifest V3 que inyecta múltiples scripts por página, activables de
 
 ## Instalación
 1. `chrome://extensions` > activar modo desarrollador > "Cargar descomprimida".
-2. En Detalles de la extensión, activar "Permitir scripts de usuario" (Chrome 138+; requiere Chrome 135+ por `userScripts.execute`).
+2. Obligatorio: en Detalles de la extensión activar "Permitir scripts de usuario" (Chrome 135+). Sin él, el popup muestra una alerta y no se ejecuta nada.
 
 ## Modelo de datos
 `{ id, name, matches: string[], code, enabled }`. Los patrones siguen el formato de match patterns de Chrome.

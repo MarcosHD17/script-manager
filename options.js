@@ -76,7 +76,8 @@ try {
   await chrome.userScripts.getScripts();
 } catch {
   els.warning.hidden = false;
-  els.warning.textContent = 'Activa "Permitir scripts de usuario" en chrome://extensions > Detalles de esta extensión (requiere Chrome 135+).';
+  els.warning.className = 'alert';
+  els.warning.textContent = '⚠ Falta un permiso: activa "Permitir scripts de usuario" en chrome://extensions > Detalles de esta extensión (requiere Chrome 135+).';
 }
 clearEditor();
 renderList();
